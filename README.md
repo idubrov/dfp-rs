@@ -2,7 +2,7 @@
 [![crates.io](https://img.shields.io/crates/d/dfp.svg)](https://crates.io/crates/dfp)
 [![CircleCI](https://img.shields.io/circleci/project/github/idubrov/dfp-rs.svg)](https://circleci.com/gh/idubrov/dfp-rs)
 
-# dfp
+# Decimal Floating-Point Library for Rust
 
 Rust bindings for Intel(R) Decimal Floating-Point Math Library
 
