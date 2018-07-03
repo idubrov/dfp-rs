@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: rust:1.27
+    environment:
+      - RUST_BACKTRACE: "1"
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y llvm-3.9-dev libclang-3.9-dev clang-3.9
+      - checkout
+      - run: cargo build
+      - run: cargo test --all
