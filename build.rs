@@ -60,9 +60,9 @@ fn compile() {
         let entry = entry.unwrap();
         let path = entry.path();
         if path.extension().map_or(false, |s| s == "c")
-            && !path
+            && path
                 .file_name()
-                .map_or(false, |s| s == "bid_decimal_globals.c")
+                .map_or(false, |s| s != "bid_decimal_globals.c")
         {
             config.file(path);
         }
