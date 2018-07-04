@@ -1,5 +1,18 @@
-[workspace]
-members = [
-    "dfp-sys",
-    "dfp"
-]
+[package]
+name = "dfp"
+version = "0.1.0"
+authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
+description = "Rust bindings for Intel(R) Decimal Floating-Point Math Library"
+repository = "https://github.com/idubrov/dfp"
+license = "MIT/Apache-2.0"
+
+[badges]
+circle-ci = { repository = "idubrov/dfp-rs" }
+codecov = { repository = "idubrov/dfp-rs" }
+is-it-maintained-issue-resolution = { repository = "idubrov/dfp-rs" }
+is-it-maintained-open-issues = { repository = "idubrov/dfp-rs" }
+maintenance = { status = "experimental" }
+
+[build-dependencies]
+cc = { version = "1.0", features = ["parallel"] }
+bindgen = "0.37.4"

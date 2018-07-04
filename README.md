@@ -1,3 +1,5 @@
+[![crates.io](https://img.shields.io/crates/v/dfp.svg)](https://crates.io/crates/dfp)
+[![crates.io](https://img.shields.io/crates/d/dfp.svg)](https://crates.io/crates/dfp)
 [![CircleCI](https://img.shields.io/circleci/project/github/idubrov/dfp-rs.svg)](https://circleci.com/gh/idubrov/dfp-rs)
 
 # Decimal Floating-Point Library for Rust

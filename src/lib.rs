@@ -1,16 +1,16 @@
 //! Rust bindings for Intel(R) Decimal Floating-Point Math Library
 #![allow(warnings)]
 
-extern crate dfp_sys;
+mod bindings;
 
 #[derive(Clone, Copy, Debug)]
-pub struct DecFloat32(dfp_sys::BID_UINT32);
+pub struct DecFloat32(bindings::BID_UINT32);
 #[derive(Clone, Copy, Debug)]
-pub struct DecFloat64(dfp_sys::BID_UINT64);
+pub struct DecFloat64(bindings::BID_UINT64);
 #[derive(Clone, Copy, Debug)]
-pub struct DecFloat128(dfp_sys::BID_UINT128);
+pub struct DecFloat128(bindings::BID_UINT128);
 
-const DEFAULT_ROUNDING: u32 = dfp_sys::BID_ROUNDING_TO_NEAREST;
+const DEFAULT_ROUNDING: u32 = bindings::BID_ROUNDING_TO_NEAREST;
 
 use std::ffi::{CStr, CString};
 use std::{fmt, str};
@@ -35,7 +35,7 @@ macro_rules! binary_func {
         pub fn $name(self, other: &Self) -> Self {
             unsafe {
                 let mut flags = 0;
-                let res = dfp_sys::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
+                let res = bindings::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
                 check_flags(flags).unwrap();
                 $t(res)
             }
@@ -97,7 +97,7 @@ macro_rules! partial_eq_impl {
             fn eq(&self, other: &Self) -> bool {
                 unsafe {
                     let mut flags = 0;
-                    let res = dfp_sys::$f(self.0, other.0, &mut flags);
+                    let res = bindings::$f(self.0, other.0, &mut flags);
                     check_flags(flags).unwrap();
                     res != 0
                 }
@@ -115,7 +115,7 @@ macro_rules! from_impl {
     ($s:ident $t:ident $f:ident) => {
         impl From<$s> for $t {
             fn from(value: $s) -> $t {
-                unsafe { $t(dfp_sys::$f(value)) }
+                unsafe { $t(bindings::$f(value)) }
             }
         }
     };
@@ -145,7 +145,7 @@ macro_rules! op_assign_impl {
             fn $opf(&mut self, other: $t) {
                 unsafe {
                     let mut flags = 0;
-                    let result = dfp_sys::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
+                    let result = bindings::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
                     check_flags(flags).unwrap();
                     self.0 = result;
                 }
@@ -162,7 +162,7 @@ macro_rules! op_impl {
             fn $opf(self, other: $t) -> $t {
                 unsafe {
                     let mut flags = 0;
-                    let result = dfp_sys::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
+                    let result = bindings::$f(self.0, other.0, DEFAULT_ROUNDING, &mut flags);
                     check_flags(flags).unwrap();
                     $t(result)
                 }
@@ -205,18 +205,18 @@ op_impl!(Mul mul DecFloat128 __bid128_mul);
 op_impl!(Div div DecFloat128 __bid128_div);
 
 /// Check DFP library flags and raise a corresponding error
-fn check_flags(flags: dfp_sys::_IDEC_flags) -> Result<(), Error> {
-    if (flags & dfp_sys::BID_INVALID_EXCEPTION) != 0 {
+fn check_flags(flags: bindings::_IDEC_flags) -> Result<(), Error> {
+    if (flags & bindings::BID_INVALID_EXCEPTION) != 0 {
         Err(Error::Invalid)
-    } else if (flags & dfp_sys::BID_DENORMAL_EXCEPTION) != 0 {
+    } else if (flags & bindings::BID_DENORMAL_EXCEPTION) != 0 {
         Err(Error::Denormal)
-    } else if (flags & dfp_sys::BID_ZERO_DIVIDE_EXCEPTION) != 0 {
+    } else if (flags & bindings::BID_ZERO_DIVIDE_EXCEPTION) != 0 {
         Err(Error::ZeroDivide)
-    } else if (flags & dfp_sys::BID_OVERFLOW_EXCEPTION) != 0 {
+    } else if (flags & bindings::BID_OVERFLOW_EXCEPTION) != 0 {
         Err(Error::Overflow)
-    } else if (flags & dfp_sys::BID_UNDERFLOW_EXCEPTION) != 0 {
+    } else if (flags & bindings::BID_UNDERFLOW_EXCEPTION) != 0 {
         Err(Error::Underflow)
-    } else if flags == 0 || flags == dfp_sys::BID_INEXACT_EXCEPTION {
+    } else if flags == 0 || flags == bindings::BID_INEXACT_EXCEPTION {
         Ok(())
     } else {
         unreachable!()
@@ -235,7 +235,7 @@ macro_rules! str_conv_impl {
                     let cstr = CString::new(s).map_err(|_| Error::InvalidString)?;
                     let raw = cstr.into_raw();
                     let mut flags = 0;
-                    let res = dfp_sys::$from(raw, 0, &mut flags);
+                    let res = bindings::$from(raw, 0, &mut flags);
                     let _ = CString::from_raw(raw);
 
                     check_flags(flags)?;
@@ -250,7 +250,7 @@ macro_rules! str_conv_impl {
                     // Maximum buffer size?
                     let mut buf: [i8; 64] = std::mem::uninitialized();
                     let mut flags = 0;
-                    dfp_sys::$to(buf.as_mut_ptr(), self.0, &mut flags);
+                    bindings::$to(buf.as_mut_ptr(), self.0, &mut flags);
                     let cstr = CStr::from_ptr(buf.as_ptr());
                     cstr.to_string_lossy().fmt(f)
                 }
