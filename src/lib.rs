@@ -142,6 +142,20 @@ impl CheckedContext {
     }
 }
 
+/// A `Context` implementation which panics every time an exception flag is raised.
+pub struct ExactContext;
+
+impl Context for ExactContext {
+    fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T {
+        let (res, flags) = cb(Default::default());
+        // FIXME: display impl for flags...
+        if !flags.is_clear() {
+            panic!("floating point exception: {:?}", flags);
+        }
+        res
+    }
+}
+
 /// A 32-bit decimal floating point type, as specified by IEEE 754-2008.
 pub struct d32<T = DefaultContext>(details::BID_UINT32, PhantomData<*const T>)
 where
@@ -511,5 +525,13 @@ mod tests {
         let _x: d32<CheckedContext> = 0xffff_ffffu32.into();
         assert!(!CheckedContext::get_flags().is_clear());
         assert!(CheckedContext::get_flags().is_inexact());
+    }
+
+    #[test]
+    fn exact_context() {
+        let result = std::panic::catch_unwind(|| {
+            let _x: d32<ExactContext> = 0xffff_ffffu32.into();
+        });
+        assert!(result.is_err());
     }
 }
