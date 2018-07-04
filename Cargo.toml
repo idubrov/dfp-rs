@@ -1,6 +1,6 @@
 [package]
 name = "dfp"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
 description = "Rust bindings for Intel(R) Decimal Floating-Point Math Library"
 repository = "https://github.com/idubrov/dfp"
