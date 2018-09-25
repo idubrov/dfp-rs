@@ -15,4 +15,4 @@ maintenance = { status = "experimental" }
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
-bindgen = "0.37"
+bindgen = "0.40"
