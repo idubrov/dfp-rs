@@ -1,3 +1,8 @@
+//! IEEE 754-2008 Decimal Floating-Point Library
+//!
+//! A pure Rust implementation of decimal floating point defined in
+//! [IEEE 754-2008](https://en.wikipedia.org/wiki/IEEE_754-2008_revision) standard (binary
+//! encoding variant).
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
