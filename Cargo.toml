@@ -1,0 +1,6 @@
+[package]
+name = "dfp"
+version = "0.1.0"
+authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
+
+[dependencies]
