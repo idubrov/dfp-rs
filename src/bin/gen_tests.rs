@@ -102,6 +102,13 @@ fn parse_boolean_op(ty: &str, func: &str, mut spec: &str) -> Option<String> {
     Some(format!("assert!({}{}.{}());", prefix, arg0, func))
 }
 
+fn parse_unary_op(ty: &str, func: &str, mut spec: &str) -> Option<String> {
+    let arg0 = scan_decimal(&mut spec, ty)?;
+    let result = scan_decimal(&mut spec, ty)?;
+    let _status = scan_status(&mut spec);
+    Some(format!("assert_eq!({}.{}().to_bits(), {}.to_bits());", arg0, func, result))
+}
+
 fn parse_classify_op(ty: &str, mut spec: &str) -> Option<String> {
     let arg0 = scan_decimal(&mut spec, ty)?;
     let category_str = scan_str(&mut spec)?;
@@ -140,6 +147,9 @@ fn parse_case(func: &str, spec: &str) -> Option<String> {
         "bid64_class" => parse_classify_op("d64", spec),
         "bid128_class" => parse_classify_op("d128", spec),
 
+        "bid32_abs" => parse_unary_op("d32", "abs", spec),
+        "bid64_abs" => parse_unary_op("d64", "abs", spec),
+        "bid128_abs" => parse_unary_op("d128", "abs", spec),
 
         _ => None,
     }

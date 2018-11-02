@@ -5,6 +5,25 @@ extern crate dfp;
 use dfp::{d32, d64, d128, FpCategory};
 
 #[test]
+fn bid128_abs() {
+    assert_eq!(d128::from_bits(0x0001ed09bead87c0378d8e62ffffffff).abs().to_bits(), d128::from_bits(0x0001ed09bead87c0378d8e62ffffffff).to_bits());
+    assert_eq!(d128::from_bits(0x0001ed09bead87c0378d8e64ffffffff).abs().to_bits(), d128::from_bits(0x0001ed09bead87c0378d8e64ffffffff).to_bits());
+    assert_eq!(d128::from_bits(0x20491165061c532a535089a5c8f9da39).abs().to_bits(), d128::from_bits(0x20491165061c532a535089a5c8f9da39).to_bits());
+    assert_eq!(d128::from_bits(0x21213a1853ae801da7a83cd1c3bfc8cb).abs().to_bits(), d128::from_bits(0x21213a1853ae801da7a83cd1c3bfc8cb).to_bits());
+    assert_eq!(d128::from_bits(0x3577621b973eb09d7e1681d2fc2fd1a3).abs().to_bits(), d128::from_bits(0x3577621b973eb09d7e1681d2fc2fd1a3).to_bits());
+    assert_eq!(d128::from_bits(0x3d780000000000000000000000000000).abs().to_bits(), d128::from_bits(0x3d780000000000000000000000000000).to_bits());
+    assert_eq!(d128::from_bits(0x3f620000000000000000000000000000).abs().to_bits(), d128::from_bits(0x3f620000000000000000000000000000).to_bits());
+    assert_eq!(d128::from_bits(0x54f99570af8fbdf89052e356786395d7).abs().to_bits(), d128::from_bits(0x54f99570af8fbdf89052e356786395d7).to_bits());
+    assert_eq!(d128::from_bits(0x59170c2b2d753371caddbeb2aa9e9d19).abs().to_bits(), d128::from_bits(0x59170c2b2d753371caddbeb2aa9e9d19).to_bits());
+    assert_eq!(d128::from_bits(0x78000000000000000000000000000000).abs().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(d128::from_bits(0x7c003fffffffffff38c15b08ffffffff).abs().to_bits(), d128::from_bits(0x7c003fffffffffff38c15b08ffffffff).to_bits());
+    assert_eq!(d128::from_bits(0x7c003fffffffffff38c15b0affffffff).abs().to_bits(), d128::from_bits(0x7c003fffffffffff38c15b0affffffff).to_bits());
+    assert_eq!(d128::from_bits(0x812c0000000000000000000000000000).abs().to_bits(), d128::from_bits(0x012c0000000000000000000000000000).to_bits());
+    assert_eq!(d128::from_bits(0xa050785cc4df58144acbb40b269da9e3).abs().to_bits(), d128::from_bits(0x2050785cc4df58144acbb40b269da9e3).to_bits());
+    assert_eq!(d128::from_bits(0xbc920000000000000000000000000000).abs().to_bits(), d128::from_bits(0x3c920000000000000000000000000000).to_bits());
+}
+
+#[test]
 fn bid128_class() {
     assert_eq!(d128::from_bits(0x0001ed09bead87c0378d8e62ffffffff).classify(), FpCategory::Normal);
     assert_eq!(d128::from_bits(0x0001ed09bead87c0378d8e64ffffffff).classify(), FpCategory::Zero);
@@ -172,6 +191,25 @@ fn bid128_isSubnormal() {
     assert!(!d128::from_bits(0xd754ce3bc22f555f79c8815335535001).is_subnormal());
     assert!(!d128::from_bits(0xd9000000000000000000000000000000).is_subnormal());
     assert!(!d128::from_bits(0xfdfdf7ff7ffdf7bfffffefffffffffaf).is_subnormal());
+}
+
+#[test]
+fn bid32_abs() {
+    assert_eq!(d32::from_bits(0x00000001).abs().to_bits(), d32::from_bits(0x00000001).to_bits());
+    assert_eq!(d32::from_bits(0x00080001).abs().to_bits(), d32::from_bits(0x00080001).to_bits());
+    assert_eq!(d32::from_bits(0x6098967f).abs().to_bits(), d32::from_bits(0x6098967f).to_bits());
+    assert_eq!(d32::from_bits(0x60989680).abs().to_bits(), d32::from_bits(0x60989680).to_bits());
+    assert_eq!(d32::from_bits(0x7c000000).abs().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(d32::from_bits(0x7c8f423f).abs().to_bits(), d32::from_bits(0x7c8f423f).to_bits());
+    assert_eq!(d32::from_bits(0x7c8f4240).abs().to_bits(), d32::from_bits(0x7c8f4240).to_bits());
+    assert_eq!(d32::from_bits(0x7e100000).abs().to_bits(), d32::from_bits(0x7e100000).to_bits());
+    assert_eq!(d32::from_bits(0x7e100100).abs().to_bits(), d32::from_bits(0x7e100100).to_bits());
+    assert_eq!(d32::from_bits(0x7e8f423f).abs().to_bits(), d32::from_bits(0x7e8f423f).to_bits());
+    assert_eq!(d32::from_bits(0x7e8f4240).abs().to_bits(), d32::from_bits(0x7e8f4240).to_bits());
+    assert_eq!(d32::from_bits(0x80000001).abs().to_bits(), d32::from_bits(0x00000001).to_bits());
+    assert_eq!(d32::from_bits(0xfc100000).abs().to_bits(), d32::from_bits(0x7c100000).to_bits());
+    assert_eq!(d32::from_bits(0xfc100100).abs().to_bits(), d32::from_bits(0x7c100100).to_bits());
+    assert_eq!(d32::from_bits(0xfe000000).abs().to_bits(), d32::from_bits(0x7e000000).to_bits());
 }
 
 #[test]
@@ -371,6 +409,21 @@ fn bid32_isSubnormal() {
     assert!(!d32::from_bits(0xfc100000).is_subnormal());
     assert!(!d32::from_bits(0xfc100100).is_subnormal());
     assert!(!d32::from_bits(0xfe000000).is_subnormal());
+}
+
+#[test]
+fn bid64_abs() {
+    assert_eq!(d64::from_bits(0x0c2f000000000000).abs().to_bits(), d64::from_bits(0x0c2f000000000000).to_bits());
+    assert_eq!(d64::from_bits(0x0eada90166c6c0e3).abs().to_bits(), d64::from_bits(0x0eada90166c6c0e3).to_bits());
+    assert_eq!(d64::from_bits(0x3a52266e9c893405).abs().to_bits(), d64::from_bits(0x3a52266e9c893405).to_bits());
+    assert_eq!(d64::from_bits(0x4820000000000000).abs().to_bits(), d64::from_bits(0x4820000000000000).to_bits());
+    assert_eq!(d64::from_bits(0x4c25e2eef8bedf06).abs().to_bits(), d64::from_bits(0x4c25e2eef8bedf06).to_bits());
+    assert_eq!(d64::from_bits(0x5972aa2ec1ca6dac).abs().to_bits(), d64::from_bits(0x5972aa2ec1ca6dac).to_bits());
+    assert_eq!(d64::from_bits(0x673828de6d87f005).abs().to_bits(), d64::from_bits(0x673828de6d87f005).to_bits());
+    assert_eq!(d64::from_bits(0x6efa41c0e86b768b).abs().to_bits(), d64::from_bits(0x6efa41c0e86b768b).to_bits());
+    assert_eq!(d64::from_bits(0xe15b6196405c5cd9).abs().to_bits(), d64::from_bits(0x615b6196405c5cd9).to_bits());
+    assert_eq!(d64::from_bits(0xedfb16881efb7901).abs().to_bits(), d64::from_bits(0x6dfb16881efb7901).to_bits());
+    assert_eq!(d64::from_bits(0xf4724d2349d55f24).abs().to_bits(), d64::from_bits(0x74724d2349d55f24).to_bits());
 }
 
 #[test]

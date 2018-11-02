@@ -7,6 +7,11 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+mod consts;
+
+use std::marker::PhantomData;
+use consts::DecimalProps;
+use std::fmt;
 pub use std::num::FpCategory;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -18,6 +23,12 @@ pub enum Rounding {
     TiesAway = 4,
 }
 
+impl Default for Rounding {
+    fn default() -> Self {
+        Rounding::Nearest
+    }
+}
+
 pub struct Status(u8);
 
 impl Status {
@@ -27,100 +38,106 @@ impl Status {
     }
 }
 
-mod factors {
-    pub const d32: [u32; 6] = [1, 10, 100, 1000, 10000, 100000];
-    pub const d64: [u64; 15] = [
-        1,
-        10,
-        100,
-        1000,
-        10000,
-        100000,
-        1000000,
-        10000000,
-        100000000,
-        1000000000,
-        10000000000,
-        100000000000,
-        1000000000000,
-        10000000000000,
-        100000000000000,
-    ];
-    pub const d128: [u128; 33] = [
-        1,
-        10,
-        100,
-        1000,
-        10000,
-        100000,
-        1000000,
-        10000000,
-        100000000,
-        1000000000,
-        10000000000,
-        100000000000,
-        1000000000000,
-        10000000000000,
-        100000000000000,
-        1000000000000000,
-        10000000000000000,
-        100000000000000000,
-        1000000000000000000,
-        10000000000000000000,
-        100000000000000000000,
-        1000000000000000000000,
-        10000000000000000000000,
-        100000000000000000000000,
-        1000000000000000000000000,
-        10000000000000000000000000,
-        100000000000000000000000000,
-        1000000000000000000000000000,
-        10000000000000000000000000000,
-        100000000000000000000000000000,
-        1000000000000000000000000000000,
-        10000000000000000000000000000000,
-        100000000000000000000000000000000,
-    ];
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Flags(u8);
+
+impl Flags {
+//    pub fn is_invalid(&self) -> bool {
+//        (self.0 & details::BID_INVALID_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_denormal(&self) -> bool {
+//        (self.0 & details::BID_DENORMAL_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_zero_divide(&self) -> bool {
+//        (self.0 & details::BID_ZERO_DIVIDE_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_overflow(&self) -> bool {
+//        (self.0 & details::BID_OVERFLOW_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_underflow(&self) -> bool {
+//        (self.0 & details::BID_UNDERFLOW_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_inexact(&self) -> bool {
+//        (self.0 & details::BID_INEXACT_EXCEPTION) != 0
+//    }
+//
+//    pub fn is_clear(&self) -> bool {
+//        self.0 == 0
+//    }
 }
 
-trait DecimalProps {
-    // Total size (bits)
-    const BITS: usize;
-    // Exponent continuation field (bits)
-    const EXPONENT_BITS: usize;
-    // Coefficient continuation field (bits)
-    const COEFFICIENT_BITS: usize;
-    // Coefficient size (decimal digits)
-    const COEFFICIENT_SIZE: usize;
-    const MAXIMUM_COEFFICIENT: Self;
-
-    const SIGN_MASK: Self;
-    const SPECIAL_ENCODING_MASK: Self;
-    const INFINITY_MASK: Self;
-    const NAN_MASK: Self;
+pub trait Context {
+    fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T;
 }
 
-#[derive(Clone, Copy)]
+/// A default implementation of context which always uses `Nearest` rounding and ignores exceptions
+/// set by the floating point library.
+pub struct DefaultContext;
+
+impl Context for DefaultContext {
+    fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T {
+        let (res, _flags) = cb(Default::default());
+        res
+    }
+}
+
+/// A 32-bit decimal floating point type, as specified by IEEE 754-2008.
 #[repr(transparent)]
-pub struct decimal<T>(T);
+pub struct Decimal32<Ctx: Context>(u32, PhantomData<*const Ctx>);
+pub type d32 = Decimal32<DefaultContext>;
+
+/// A 64-bit decimal floating point type, as specified by IEEE 754-2008.
+#[repr(transparent)]
+pub struct Decimal64<Ctx: Context>(u64, PhantomData<*const Ctx>);
+pub type d64 = Decimal64<DefaultContext>;
+
+/// A 128-bit decimal floating point type, as specified by IEEE 754-2008.
+#[repr(transparent)]
+pub struct Decimal128<Ctx: Context>(u128, PhantomData<*const Ctx>);
+pub type d128 = Decimal128<DefaultContext>;
 
 macro_rules! gen_impl {
     ($name:ident, $ty:ident) => {
-        pub type $name = decimal<$ty>;
+        impl <Ctx: $crate::Context> Clone for $name<Ctx> {
+            fn clone(&self) -> Self {
+                $name(self.0, PhantomData)
+            }
+        }
 
-        impl decimal<$ty> {
+        impl <Ctx: $crate::Context> Copy for $name<Ctx> { }
+
+        impl <Ctx: $crate::Context> fmt::Debug for $name<Ctx> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "[0x{1:00$x}]", $ty::BITS / 4, self.0)
+            }
+        }
+
+        impl <Ctx: $crate::Context> $name<Ctx> {
+            /// Returns `true` if this value is `NaN` and `false` otherwise.
             pub fn is_nan(self) -> bool {
                 (self.0 & $ty::NAN_MASK) == $ty::NAN_MASK
             }
 
+            /// Returns `true` if this value is positive infinity or negative infinity and `false`
+            /// otherwise.
             pub fn is_infinite(self) -> bool {
                 (self.0 & $ty::NAN_MASK) == $ty::INFINITY_MASK
             }
 
+            /// Returns `true` if this number is neither infinite nor `NaN`.
             pub fn is_finite(self) -> bool {
                 (self.0 & $ty::INFINITY_MASK) != $ty::INFINITY_MASK
             }
 
+            /// Returns `true` if the number is neither zero, infinite, [subnormal][subnormal], or
+            /// `NaN`.
+            ///
+            /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
             pub fn is_normal(self) -> bool {
                 if !self.is_finite() {
                     return false; // NaN or Infinite
@@ -129,9 +146,12 @@ macro_rules! gen_impl {
                 if unpacked.coefficient == 0 {
                     return false; // Zero or illegal
                 }
-                $name::is_normal_internal(unpacked)
+                Self::is_normal_internal(unpacked)
             }
 
+            /// Returns `true` if the number is [subnormal][subnormal].
+            ///
+            /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
             pub fn is_subnormal(self) -> bool {
                 if !self.is_finite() {
                     return false; // NaN or Infinite
@@ -140,22 +160,11 @@ macro_rules! gen_impl {
                 if unpacked.coefficient == 0 {
                     return false; // Zero or illegal
                 }
-                !$name::is_normal_internal(unpacked)
+                !Self::is_normal_internal(unpacked)
             }
 
-            fn is_normal_internal(unpacked: Unpacked<$ty>) -> bool {
-                if unpacked.exponent >= ($ty::COEFFICIENT_SIZE - 1) as u16 {
-                    true // Normal
-                } else {
-                    // Check if coefficient is high enough for an exponent
-                    let coeff = unpacked
-                        .coefficient
-                        .checked_mul(::factors::$name[unpacked.exponent as usize]);
-                    // If overflowed, then it's guaranteed to be a "normal" number
-                    coeff.map_or(true, |v| v >= ($ty::MAXIMUM_COEFFICIENT / 10))
-                }
-            }
-
+            /// Returns the floating point category of the number. If only one property is going to
+            /// be tested, it is generally faster to use the specific predicate instead.
             pub fn classify(self) -> FpCategory {
                 if self.is_nan() {
                     FpCategory::Nan
@@ -165,7 +174,7 @@ macro_rules! gen_impl {
                     let unpacked = self.unpack();
                     if unpacked.coefficient == 0 {
                         return FpCategory::Zero;
-                    } else if $name::is_normal_internal(unpacked) {
+                    } else if Self::is_normal_internal(unpacked) {
                         FpCategory::Normal
                     } else {
                         FpCategory::Subnormal
@@ -173,10 +182,14 @@ macro_rules! gen_impl {
                 }
             }
 
+            /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s
+            /// with positive sign bit and positive infinity.
             pub fn is_sign_positive(self) -> bool {
                 !self.is_sign_negative()
             }
 
+            /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s
+            /// with negative sign bit and negative infinity.
             pub fn is_sign_negative(self) -> bool {
                 (self.0 & $ty::SIGN_MASK) != 0
             }
@@ -188,10 +201,27 @@ macro_rules! gen_impl {
 
             /// Raw transmutation from the underlying type.
             pub fn from_bits(bits: $ty) -> Self {
-                decimal(bits)
+                $name(bits, PhantomData)
             }
 
-            pub fn unpack(self) -> Unpacked<$ty> {
+            pub fn abs(self) -> Self {
+                Self::from_bits(self.0 & !($ty::SIGN_MASK))
+            }
+
+            fn is_normal_internal(unpacked: Unpacked<$ty>) -> bool {
+                if unpacked.exponent >= ($ty::COEFFICIENT_SIZE - 1) as u16 {
+                    true // Normal
+                } else {
+                    // Check if coefficient is high enough for an exponent
+                    let coeff = unpacked
+                        .coefficient
+                        .checked_mul($crate::consts::factors::$ty[unpacked.exponent as usize]);
+                    // If overflowed, then it's guaranteed to be a "normal" number
+                    coeff.map_or(true, |v| v >= ($ty::MAXIMUM_COEFFICIENT / 10))
+                }
+            }
+
+            fn unpack(self) -> Unpacked<$ty> {
                 debug_assert!(self.is_finite(), "can only unpack finite numbers");
 
                 const ONE: $ty = 1 as $ty;
@@ -229,68 +259,13 @@ macro_rules! gen_impl {
     };
 }
 
-gen_impl!(d32, u32);
-gen_impl!(d64, u64);
-gen_impl!(d128, u128);
+gen_impl!(Decimal32, u32);
+gen_impl!(Decimal64, u64);
+gen_impl!(Decimal128, u128);
 
-//
-//trait FpDecimal: Clone + Copy {
-//    type Bits;
-//
-//    fn is_nan(self) -> bool;
-//    fn is_infinite(self) -> bool;
-//    fn is_finite(self) -> bool;
-//    fn is_normal(self) -> bool;
-//    fn classify(self) -> FpCategory;
-//    fn is_sign_positive(self) -> bool;
-//    fn is_sign_negative(self) -> bool;
-//    fn to_bits(self) -> Self::Bits;
-//    fn from_bits(bits: Self::Bits) -> Self;
-//}
-
-// Internal constants
-
-impl DecimalProps for u32 {
-    const BITS: usize = 32;
-    const EXPONENT_BITS: usize = 6;
-    const COEFFICIENT_BITS: usize = 20;
-    const COEFFICIENT_SIZE: usize = 7;
-    const MAXIMUM_COEFFICIENT: u32 = 10_000_000;
-
-    const SIGN_MASK: u32 = 0b10000000u32 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u32 = 0b01100000u32 << (Self::BITS - 8);
-    const INFINITY_MASK: Self = 0b01111000 << (Self::BITS - 8);
-    const NAN_MASK: Self = 0b01111100 << (Self::BITS - 8);
-}
-
-impl DecimalProps for u64 {
-    const BITS: usize = 64;
-    const EXPONENT_BITS: usize = 8;
-    const COEFFICIENT_BITS: usize = 50;
-    const COEFFICIENT_SIZE: usize = 16;
-    const MAXIMUM_COEFFICIENT: u64 = 10_000_000_000_000_000;
-
-    const SIGN_MASK: u64 = 0b10000000u64 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u64 = 0b01100000u64 << (Self::BITS - 8);
-    const INFINITY_MASK: Self = 0b01111000 << (Self::BITS - 8);
-    const NAN_MASK: Self = 0b01111100 << (Self::BITS - 8);
-}
-
-impl DecimalProps for u128 {
-    const BITS: usize = 128;
-    const EXPONENT_BITS: usize = 12;
-    const COEFFICIENT_SIZE: usize = 34;
-    const COEFFICIENT_BITS: usize = 110;
-    const MAXIMUM_COEFFICIENT: u128 = 10_000_000_000_000_000_000_000_000_000_000_000;
-
-    const SIGN_MASK: u128 = 0b10000000u128 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u128 = 0b01100000u128 << (Self::BITS - 8);
-    const INFINITY_MASK: Self = 0b01111000 << (Self::BITS - 8);
-    const NAN_MASK: Self = 0b01111100 << (Self::BITS - 8);
-}
 
 #[derive(Debug)]
-pub struct Unpacked<T> {
+struct Unpacked<T> {
     coefficient: T,
     exponent: u16,
     sign: bool,
@@ -298,17 +273,15 @@ pub struct Unpacked<T> {
 
 #[cfg(test)]
 mod tests {
+
+    use super::{d128, FpCategory, DefaultContext};
     #[test]
     fn it_works() {
-        use super::decimal;
-        let x: decimal<u32> = decimal(0x3292d688);
-        println!("{:?}", x.unpack());
 
-        let x: decimal<u32> = decimal(0x320004d1);
-        println!("{:?}", x.unpack());
-
-        let x: decimal<u32> = decimal(0x6cb8967f);
-        println!("{:?}", x.unpack());
+        let x = d128::from_bits(0x0001ed09bead87c0378d8e62ffffffff);
+        assert_eq!(x.classify(), FpCategory::Normal);
+        println!("HELLO {:?}", x);
+//        `
 
         /*let x: u128 = 0x303e00000000000000000000000004d1;
         let y: u128 = 0x303e00000000000000000000000011d4;
