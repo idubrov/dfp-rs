@@ -1,15 +1,33 @@
-// **NOTE**: THIS FILE IS AUTO-GENERATED FROM d128_impl.rs. DO NOT MODIFY!
+// **NOTE**: THIS FILE IS AUTO-GENERATED FROM d32_impl.rs. DO NOT MODIFY!
 use crate::consts::DecimalProps;
-use crate::Decimal64;
-use crate::{FpCategory, ParseDecimalError, Unpacked};
+use crate::{Decimal64, FpCategory, ParseDecimalError, Rounding, Unpacked};
 use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
 const SIGN_MASK: u64 = 0b10000000 << (u64::BITS - 8);
+
+/// Mask for "special encoding" (two bits after the sign bit). If the 2 bits after the sign bit
+/// are `11`, then we use a "short" coefficient representation with implicit `100` prefix.
 const SPECIAL_ENC_MASK: u64 = 0b01100000 << (u64::BITS - 8);
 const INFINITY_MASK: u64 = 0b01111000 << (u64::BITS - 8);
 const NAN_MASK: u64 = 0b01111100 << (u64::BITS - 8);
+/// Add 2 -- two bits in front of the exponent bits are also part of the exponent, as long as they
+/// are not `11`.
+const EXPONENT_MASK: u64 = (1 << (u64::EXPONENT_BITS + 2)) - 1;
+
+// If the most significant 4 bits of the significand are between 0 and 7, the encoded value
+// begins as follows:
+// s eemmm xxx   Coefficient begins with 0mmm
+const LONG_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 3;
+const LONG_COEFF_MASK: u64 = (1 << LONG_COEFF_SHIFT) - 1;
+
+// If the leading 4 bits of the significand are binary 1000 or 1001 (decimal 8 or 9), the
+// number begins as follows:
+// s 11eem xxx Coefficient begins with 100m
+const SHORT_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 1;
+const SHORT_COEFF_MASK: u64 = (1 << SHORT_COEFF_SHIFT) - 1;
+const SHORT_COEFF_HIGH_BIT: u64 = 1 << LONG_COEFF_SHIFT;
 
 impl<Ctx: crate::Context> Clone for Decimal64<Ctx> {
     fn clone(&self) -> Self {
@@ -22,6 +40,51 @@ impl<Ctx: crate::Context> Copy for Decimal64<Ctx> {}
 impl<Ctx: crate::Context> fmt::Debug for Decimal64<Ctx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[0x{1:00$x}]", u64::BITS / 4, self.0)
+    }
+}
+
+impl<Ctx: crate::Context> From<Decimal64<Ctx>> for Unpacked<u64> {
+    fn from(value: Decimal64<Ctx>) -> Self {
+        debug_assert!(value.is_finite(), "can only unpack finite numbers");
+
+        let sign = (value.0 & SIGN_MASK) != 0;
+        let mut unpacked = if (value.0 & SPECIAL_ENC_MASK) == SPECIAL_ENC_MASK {
+            Unpacked {
+                coefficient: (value.0 & SHORT_COEFF_MASK) | SHORT_COEFF_HIGH_BIT,
+                exponent: ((value.0 >> SHORT_COEFF_SHIFT) & EXPONENT_MASK) as u16,
+                sign,
+            }
+        } else {
+            Unpacked {
+                coefficient: value.0 & LONG_COEFF_MASK,
+                exponent: ((value.0 >> LONG_COEFF_SHIFT) & EXPONENT_MASK) as u16,
+                sign,
+            }
+        };
+
+        // Treat illegal significants as 0
+        if unpacked.coefficient >= u64::MAXIMUM_COEFFICIENT {
+            unpacked.coefficient = 0;
+        }
+
+        unpacked
+    }
+}
+
+impl<Ctx: crate::Context> From<Unpacked<u64>> for Decimal64<Ctx> {
+    fn from(unpacked: Unpacked<u64>) -> Self {
+        debug_assert!(unpacked.coefficient < u64::MAXIMUM_COEFFICIENT, "coefficient is too large");
+        debug_assert!(unpacked.exponent < (0b11 << u64::EXPONENT_BITS), "exponent is too large");
+
+        let mut value: u64 = if unpacked.sign { SIGN_MASK } else { 0 };
+        if (unpacked.coefficient & SHORT_COEFF_HIGH_BIT) == SHORT_COEFF_HIGH_BIT {
+            value |= unpacked.coefficient & SHORT_COEFF_MASK;
+            value |= u64::from(unpacked.exponent) << SHORT_COEFF_SHIFT;
+        } else {
+            value |= unpacked.coefficient & LONG_COEFF_MASK;
+            value |= u64::from(unpacked.exponent) << LONG_COEFF_SHIFT;
+        }
+        Decimal64(value, PhantomData)
     }
 }
 
@@ -130,37 +193,7 @@ impl<Ctx: crate::Context> Decimal64<Ctx> {
     }
 
     fn unpack(self) -> Unpacked<u64> {
-        debug_assert!(self.is_finite(), "can only unpack finite numbers");
-
-        const EXPONENT_MASK: u64 = (1 << (u64::EXPONENT_BITS + 2)) - 1;
-        const LONG_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 3;
-        const LONG_COEFF_MASK: u64 = (1 << LONG_COEFF_SHIFT) - 1;
-
-        const SHORT_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 1;
-        const SHORT_COEFF_MASK: u64 = (1 << SHORT_COEFF_SHIFT) - 1;
-        const SHORT_COEFF_HIGH_BIT: u64 = 1 << LONG_COEFF_SHIFT;
-
-        let sign = (self.0 & SIGN_MASK) != 0;
-        let mut unpacked = if (self.0 & SPECIAL_ENC_MASK) == SPECIAL_ENC_MASK {
-            Unpacked {
-                coefficient: (self.0 & SHORT_COEFF_MASK) | SHORT_COEFF_HIGH_BIT,
-                exponent: ((self.0 >> SHORT_COEFF_SHIFT) & EXPONENT_MASK) as u16,
-                sign,
-            }
-        } else {
-            Unpacked {
-                coefficient: self.0 & LONG_COEFF_MASK,
-                exponent: ((self.0 >> LONG_COEFF_SHIFT) & EXPONENT_MASK) as u16,
-                sign,
-            }
-        };
-
-        // Treat illegal significants as 0
-        if unpacked.coefficient >= u64::MAXIMUM_COEFFICIENT {
-            unpacked.coefficient = 0;
-        }
-
-        unpacked
+        self.into()
     }
 }
 
@@ -193,6 +226,7 @@ impl<Ctx: crate::Context> FromStr for Decimal64<Ctx> {
 
     fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
         let mut bytes = s.as_bytes();
+        // Sign mask of the number; 0 for positive numbers
         let mut sign: u64 = 0;
 
         if bytes.is_empty() {
@@ -216,46 +250,81 @@ impl<Ctx: crate::Context> FromStr for Decimal64<Ctx> {
             return Ok(Self::from_bits(NAN_MASK));
         }
 
+        // Drop leading zeroes
         while bytes.first() == Some(&b'0') {
             bytes = &bytes[1..];
         }
 
-        let mut zeroes = 0;
+        // Negative exponent for power of 10 (negative since it's easier this way)
+        let mut exponent: isize = 0;
         let mut has_point = false;
+
+        // Count zeroes after the decimal point
         if bytes.first() == Some(&b'.') {
             has_point = true;
             bytes = &bytes[1..];
 
             while bytes.first() == Some(&b'0') {
                 bytes = &bytes[1..];
-                zeroes += 1;
+                exponent += 1;
             }
+            // FIXME: handle when exponent is too large!
         }
 
+        // The result is zero, with `zeroes` leading zeroes
         if bytes.is_empty() {
-            let exp = if u64::BIAS < zeroes {
-                0
-            } else {
-                u64::BIAS - zeroes
-            };
-            let value = (exp << (u64::COEFFICIENT_BITS + 3)) | sign;
+            let exp = u64::BIAS - exponent.min(u64::BIAS);
+            let value = ((exp as u64) << (u64::COEFFICIENT_BITS + 3)) | sign;
             return Ok(Self::from_bits(value));
         }
 
-        while bytes
-            .first()
-            .map_or(false, |b| *b == b'.' || (*b >= b'0' && *b <= b'9'))
-        {
-            zeroes += 1;
-            if bytes[0] == b'.' {
-                if has_point {
+        let mut coefficient: u64 = 0;
+        let mut coeff_digits = 0;
+        while !bytes.is_empty() && (bytes[0] == b'.' || (bytes[0] >= b'0' && bytes[0] <= b'9')) {
+            if has_point {
+                if bytes[0] == b'.' {
                     return Err(ParseDecimalError::Invalid);
                 }
+                exponent += 1;
+            } else if bytes[0] == b'.' {
                 has_point = true;
-                zeroes = 0;
+                bytes = &bytes[1..];
+                continue;
+            }
+
+            coeff_digits += 1;
+            let digit = bytes[0] - b'0';
+            if coeff_digits <= u64::COEFFICIENT_SIZE {
+                coefficient *= 10;
+                coefficient += u64::from(digit);
+            } else if coeff_digits == u64::COEFFICIENT_SIZE + 1 {
+                // We are at the first digit that will be rounded off
+                let round_up = match Ctx::rounding() {
+                    Rounding::Nearest if digit == 5 => {
+                        let ahead = bytes.get(1).cloned().unwrap_or(b'0');
+                        let is_odd = (coefficient % 2) == 1;
+                        is_odd || ahead > b'0' && ahead <= b'9'
+                    }
+                    Rounding::Nearest => digit > 5,
+                    Rounding::Down => sign != 0,
+                    Rounding::Up => sign == 0,
+                    Rounding::TiesAway  => digit >= 5,
+                    Rounding::Zero  => false,
+                };
+                if round_up {
+                    coefficient += 1;
+                }
+                if coefficient == u64::MAXIMUM_COEFFICIENT {
+                    // Essentially, divide coefficient by 10 -- it's too big now!
+                    coefficient = crate::consts::factors::u64[u64::COEFFICIENT_SIZE - 1];
+                    exponent -= 1;
+                }
+                exponent -= 1;
+            } else {
+                exponent -= 1;
             }
             bytes = &bytes[1..];
         }
-        unimplemented!()
+        unimplemented!("coefficient: {}, exponent: {}", coefficient, u64::BIAS - exponent);
     }
 }

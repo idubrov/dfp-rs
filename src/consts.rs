@@ -8,7 +8,7 @@ pub trait DecimalProps {
     // Coefficient size (decimal digits)
     const COEFFICIENT_SIZE: usize;
     const MAXIMUM_COEFFICIENT: Self;
-    const BIAS: Self;
+    const BIAS: isize;
 }
 
 impl DecimalProps for u32 {
@@ -17,7 +17,7 @@ impl DecimalProps for u32 {
     const COEFFICIENT_BITS: usize = 20;
     const COEFFICIENT_SIZE: usize = 7;
     const MAXIMUM_COEFFICIENT: u32 = 10_000_000;
-    const BIAS: u32 = 101;
+    const BIAS: isize = 101;
 }
 
 impl DecimalProps for u64 {
@@ -26,7 +26,7 @@ impl DecimalProps for u64 {
     const COEFFICIENT_BITS: usize = 50;
     const COEFFICIENT_SIZE: usize = 16;
     const MAXIMUM_COEFFICIENT: u64 = 10_000_000_000_000_000;
-    const BIAS: u64 = 398;
+    const BIAS: isize = 398;
 }
 
 impl DecimalProps for u128 {
@@ -35,12 +35,12 @@ impl DecimalProps for u128 {
     const COEFFICIENT_BITS: usize = 110;
     const COEFFICIENT_SIZE: usize = 34;
     const MAXIMUM_COEFFICIENT: u128 = 10_000_000_000_000_000_000_000_000_000_000_000;
-    const BIAS: u128 = 6176;
+    const BIAS: isize = 6176;
 }
 
 pub mod factors {
-    pub const u32: [u32; 6] = [1, 10, 100, 1000, 10000, 100000];
-    pub const u64: [u64; 15] = [
+    pub const u32: [u32; 7] = [1, 10, 100, 1000, 10000, 100000, 1000000];
+    pub const u64: [u64; 16] = [
         1,
         10,
         100,
@@ -56,8 +56,9 @@ pub mod factors {
         1000000000000,
         10000000000000,
         100000000000000,
+        1000000000000000,
     ];
-    pub const u128: [u128; 33] = [
+    pub const u128: [u128; 34] = [
         1,
         10,
         100,
@@ -91,5 +92,6 @@ pub mod factors {
         1000000000000000000000000000000,
         10000000000000000000000000000000,
         100000000000000000000000000000000,
+        1000000000000000000000000000000000,
     ];
 }

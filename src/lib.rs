@@ -8,7 +8,6 @@
 #![allow(non_camel_case_types)]
 
 mod consts;
-
 mod d128_impl;
 mod d32_impl;
 mod d64_impl;
@@ -24,11 +23,17 @@ pub enum ParseDecimalError {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Rounding {
-    Nearest = 0,
-    Down = 1,
-    Up = 2,
-    Zero = 3,
-    TiesAway = 4,
+    /// Round to nearest, with ties rounding to the nearest even digit.
+    Nearest,
+    /// Round down (toward negative infinity; negative results thus round away from zero)
+    Down,
+    /// Round up (toward positive infinity; negative results thus round toward zero)
+    Up,
+    /// Round toward zero (truncation; it is similar to the common behavior of float-to-integer
+    /// conversions, which convert −3.9 to −3 and 3.9 to 3)
+    Zero,
+    /// Round to nearest, where ties round away from zero
+    TiesAway,
 }
 
 impl Default for Rounding {
@@ -80,40 +85,72 @@ impl Flags {
 }
 
 pub trait Context: private::Sealed {
-    fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T;
+    fn op<T>(cb: impl FnOnce(Rounding) -> (T, Flags)) -> T {
+        let (res, _flags) = cb(Self::rounding());
+        res
+    }
+    fn rounding() -> Rounding;
 }
 
 mod private {
     pub trait Sealed {}
-
-    impl Sealed for super::DefaultContext {}
 }
 
-/// A default implementation of context which always uses `Nearest` rounding and ignores exceptions
-/// set by the floating point library.
-pub struct DefaultContext;
+macro_rules! declare_context {
+    ($name:ident, $rounding:ident, $doc:expr) => {
+        #[doc = $doc]
+        pub struct $name;
 
-impl Context for DefaultContext {
-    fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T {
-        let (res, _flags) = cb(Default::default());
-        res
+        impl Context for $name {
+            fn rounding() -> Rounding {
+                Rounding::$rounding
+            }
+        }
+
+        impl private::Sealed for $name {}
     }
 }
+
+declare_context!(
+    NearestRoundingContext,
+    Nearest,
+    "An implementation of context which always uses `Nearest` rounding and ignores exceptions"
+);
+declare_context!(
+    DownRoundingContext,
+    Down,
+    "An implementation of context which always uses `Down` rounding and ignores exceptions"
+);
+declare_context!(
+    UpRoundingContext,
+    Up,
+    "An implementation of context which always uses `Up` rounding and ignores exceptions"
+);
+declare_context!(
+    ZeroRoundingContext,
+    Zero,
+    "An implementation of context which always uses `Zero` rounding and ignores exceptions"
+);
+declare_context!(
+    TiesAwayRoundingContext,
+    TiesAway,
+    "An implementation of context which always uses `TiesAway` rounding and ignores exceptions"
+);
 
 /// A 32-bit decimal floating point type, as specified by IEEE 754-2008.
 #[repr(transparent)]
 pub struct Decimal32<Ctx: Context>(u32, PhantomData<*const Ctx>);
-pub type d32 = Decimal32<DefaultContext>;
+pub type d32 = Decimal32<NearestRoundingContext>;
 
 /// A 64-bit decimal floating point type, as specified by IEEE 754-2008.
 #[repr(transparent)]
 pub struct Decimal64<Ctx: Context>(u64, PhantomData<*const Ctx>);
-pub type d64 = Decimal64<DefaultContext>;
+pub type d64 = Decimal64<NearestRoundingContext>;
 
 /// A 128-bit decimal floating point type, as specified by IEEE 754-2008.
 #[repr(transparent)]
 pub struct Decimal128<Ctx: Context>(u128, PhantomData<*const Ctx>);
-pub type d128 = Decimal128<DefaultContext>;
+pub type d128 = Decimal128<NearestRoundingContext>;
 
 #[derive(Debug)]
 struct Unpacked<T> {
@@ -125,20 +162,24 @@ struct Unpacked<T> {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-
-    use super::{d128, DefaultContext, FpCategory};
+    use super::FpCategory;
     #[test]
     fn it_works() {
-        let x = "0.0001".parse::<d128>().unwrap();
-        println!("boo {:?} {:x}", x.classify(), x.to_bits());
-
-        let x = "0".parse::<d128>().unwrap();
-        println!("{:?} {:x}", x.classify(), x.to_bits());
-
+        type d32 = crate::Decimal32<crate::DownRoundingContext>;
+        //let x = "-99999999".parse::<d32>().unwrap();
+        //println!("boo {:?} {:x}", x.classify(), x.to_bits());
         // 0 => 30300000000000000000000000000000
         //0.0 => 303e0000000000000000000000000000
         //        `
 
+        type d128 = crate::Decimal128<crate::NearestRoundingContext>;
+        let expected = d128::from_bits(0x3000314dc6448d9338c15b0a00000000);
+        let unpacked: crate::Unpacked<_> = expected.into();
+        eprintln!("{:?}", unpacked);
+        let actual = "9.9999999999999999999999999999999995".parse::<d128>().unwrap();
+        //3000314dc6448d9338c15b0a00000000
+
+        //bid128_from_string 2 9.9999999999999999999999999999999995 [3000314dc6448d9338c15b0a00000000] 20
         /*let x: u128 = 0x303e00000000000000000000000004d1;
         let y: u128 = 0x303e00000000000000000000000011d4;
         let z: u128 = 0x303e00000000000000000000000016a5;
