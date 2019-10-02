@@ -1,0 +1,256 @@
+// **NOTE**: THIS FILE IS AUTO-GENERATED FROM d128_impl.rs. DO NOT MODIFY!
+use crate::consts::DecimalProps;
+use crate::Decimal64;
+use crate::{FpCategory, ParseDecimalError, Unpacked};
+use std::fmt;
+use std::marker::PhantomData;
+use std::str::FromStr;
+
+impl<Ctx: crate::Context> Clone for Decimal64<Ctx> {
+    fn clone(&self) -> Self {
+        Decimal64(self.0, PhantomData)
+    }
+}
+
+impl<Ctx: crate::Context> Copy for Decimal64<Ctx> {}
+
+impl<Ctx: crate::Context> fmt::Debug for Decimal64<Ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[0x{1:00$x}]", u64::BITS / 4, self.0)
+    }
+}
+
+impl<Ctx: crate::Context> Decimal64<Ctx> {
+    /// Returns `true` if this value is `NaN` and `false` otherwise.
+    pub fn is_nan(self) -> bool {
+        (self.0 & u64::NAN_MASK) == u64::NAN_MASK
+    }
+
+    /// Returns `true` if this value is positive infinity or negative infinity and `false`
+    /// otherwise.
+    pub fn is_infinite(self) -> bool {
+        (self.0 & u64::NAN_MASK) == u64::INFINITY_MASK
+    }
+
+    /// Returns `true` if this number is neither infinite nor `NaN`.
+    pub fn is_finite(self) -> bool {
+        (self.0 & u64::INFINITY_MASK) != u64::INFINITY_MASK
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, [subnormal][subnormal], or
+    /// `NaN`.
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    pub fn is_normal(self) -> bool {
+        if !self.is_finite() {
+            return false; // NaN or Infinite
+        }
+        let unpacked = self.unpack();
+        if unpacked.coefficient == 0 {
+            return false; // Zero or illegal
+        }
+        Self::is_normal_internal(unpacked)
+    }
+
+    /// Returns `true` if the number is [subnormal][subnormal].
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    pub fn is_subnormal(self) -> bool {
+        if !self.is_finite() {
+            return false; // NaN or Infinite
+        }
+        let unpacked = self.unpack();
+        if unpacked.coefficient == 0 {
+            return false; // Zero or illegal
+        }
+        !Self::is_normal_internal(unpacked)
+    }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    pub fn classify(self) -> FpCategory {
+        if self.is_nan() {
+            FpCategory::Nan
+        } else if self.is_infinite() {
+            FpCategory::Infinite
+        } else {
+            let unpacked = self.unpack();
+            if unpacked.coefficient == 0 {
+                return FpCategory::Zero;
+            } else if Self::is_normal_internal(unpacked) {
+                FpCategory::Normal
+            } else {
+                FpCategory::Subnormal
+            }
+        }
+    }
+
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s
+    /// with positive sign bit and positive infinity.
+    pub fn is_sign_positive(self) -> bool {
+        !self.is_sign_negative()
+    }
+
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s
+    /// with negative sign bit and negative infinity.
+    pub fn is_sign_negative(self) -> bool {
+        (self.0 & u64::SIGN_MASK) != 0
+    }
+
+    /// Raw transmutation to the underlying type.
+    pub fn to_bits(self) -> u64 {
+        self.0
+    }
+
+    /// Raw transmutation from the underlying type.
+    pub fn from_bits(bits: u64) -> Self {
+        Decimal64(bits, PhantomData)
+    }
+
+    pub fn abs(self) -> Self {
+        Self::from_bits(self.0 & !(u64::SIGN_MASK))
+    }
+
+    fn is_normal_internal(unpacked: Unpacked<u64>) -> bool {
+        if unpacked.exponent >= (u64::COEFFICIENT_SIZE - 1) as u16 {
+            true // Normal
+        } else {
+            // Check if coefficient is high enough for an exponent
+            let coeff = unpacked
+                .coefficient
+                .checked_mul(crate::consts::factors::u64[unpacked.exponent as usize]);
+            // If overflowed, then it's guaranteed to be a "normal" number
+            coeff.map_or(true, |v| v >= (u64::MAXIMUM_COEFFICIENT / 10))
+        }
+    }
+
+    fn unpack(self) -> Unpacked<u64> {
+        debug_assert!(self.is_finite(), "can only unpack finite numbers");
+
+        const EXPONENT_MASK: u64 = (1 << (u64::EXPONENT_BITS + 2)) - 1;
+        const LONG_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 3;
+        const LONG_COEFF_MASK: u64 = (1 << LONG_COEFF_SHIFT) - 1;
+
+        const SHORT_COEFF_SHIFT: usize = u64::COEFFICIENT_BITS + 1;
+        const SHORT_COEFF_MASK: u64 = (1 << SHORT_COEFF_SHIFT) - 1;
+        const SHORT_COEFF_HIGH_BIT: u64 = 1 << LONG_COEFF_SHIFT;
+
+        let sign = (self.0 & u64::SIGN_MASK) != 0;
+        let mut unpacked = if (self.0 & u64::SPECIAL_ENC_MASK) == u64::SPECIAL_ENC_MASK {
+            Unpacked {
+                coefficient: (self.0 & SHORT_COEFF_MASK) | SHORT_COEFF_HIGH_BIT,
+                exponent: ((self.0 >> SHORT_COEFF_SHIFT) & EXPONENT_MASK) as u16,
+                sign,
+            }
+        } else {
+            Unpacked {
+                coefficient: self.0 & LONG_COEFF_MASK,
+                exponent: ((self.0 >> LONG_COEFF_SHIFT) & EXPONENT_MASK) as u16,
+                sign,
+            }
+        };
+
+        // Treat illegal significants as 0
+        if unpacked.coefficient >= u64::MAXIMUM_COEFFICIENT {
+            unpacked.coefficient = 0;
+        }
+
+        unpacked
+    }
+}
+
+/// Converts a string in base 10 to a float.
+/// Accepts an optional decimal exponent.
+///
+/// This function accepts strings such as
+///
+/// * '3.14'
+/// * '-3.14'
+/// * '2.5E10', or equivalently, '2.5e10'
+/// * '2.5E-10'
+/// * '5.'
+/// * '.5', or, equivalently,  '0.5'
+/// * 'inf', '-inf', 'NaN'
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * src - A string
+///
+/// # Return value
+///
+/// `Err(ParseDecimalError)` if the string did not represent a valid
+/// number.  Otherwise, `Ok(n)` where `n` is the floating-point decimal
+/// number represented by `src`.
+impl<Ctx: crate::Context> FromStr for Decimal64<Ctx> {
+    type Err = ParseDecimalError;
+
+    fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
+        let mut bytes = s.as_bytes();
+        let mut sign: u64 = 0;
+
+        if bytes.is_empty() {
+            return Err(ParseDecimalError::Empty);
+        }
+        if bytes.first() == Some(&b'-') {
+            sign = u64::SIGN_MASK;
+            bytes = &bytes[1..];
+        } else if bytes.first() == Some(&b'+') {
+            bytes = &bytes[1..];
+        };
+        if bytes.is_empty() {
+            return Err(ParseDecimalError::Invalid);
+        }
+
+        if bytes == b"inf" {
+            return Ok(Self::from_bits(u64::INFINITY_MASK | sign));
+        }
+
+        if bytes == b"NaN" {
+            return Ok(Self::from_bits(u64::NAN_MASK));
+        }
+
+        while bytes.first() == Some(&b'0') {
+            bytes = &bytes[1..];
+        }
+
+        let mut zeroes = 0;
+        let mut has_point = false;
+        if bytes.first() == Some(&b'.') {
+            has_point = true;
+            bytes = &bytes[1..];
+
+            while bytes.first() == Some(&b'0') {
+                bytes = &bytes[1..];
+                zeroes += 1;
+            }
+        }
+
+        if bytes.is_empty() {
+            let exp = if u64::BIAS < zeroes {
+                0
+            } else {
+                u64::BIAS - zeroes
+            };
+            let value = (exp << (u64::COEFFICIENT_BITS + 3)) | sign;
+            return Ok(Self::from_bits(value));
+        }
+
+        while bytes
+            .first()
+            .map_or(false, |b| *b == b'.' || (*b >= b'0' && *b <= b'9'))
+        {
+            zeroes += 1;
+            if bytes[0] == b'.' {
+                if has_point {
+                    return Err(ParseDecimalError::Invalid);
+                }
+                has_point = true;
+                zeroes = 0;
+            }
+            bytes = &bytes[1..];
+        }
+        unimplemented!()
+    }
+}

@@ -11,7 +11,7 @@ pub trait DecimalProps {
     const BIAS: Self;
 
     const SIGN_MASK: Self;
-    const SPECIAL_ENCODING_MASK: Self;
+    const SPECIAL_ENC_MASK: Self;
     const INFINITY_MASK: Self;
     const NAN_MASK: Self;
 }
@@ -25,7 +25,7 @@ impl DecimalProps for u32 {
     const BIAS: u32 = 101;
 
     const SIGN_MASK: u32 = 0b10000000u32 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u32 = 0b01100000u32 << (Self::BITS - 8);
+    const SPECIAL_ENC_MASK: u32 = 0b01100000u32 << (Self::BITS - 8);
     const INFINITY_MASK: Self = 0b01111000u32 << (Self::BITS - 8);
     const NAN_MASK: Self = 0b01111100u32 << (Self::BITS - 8);
 }
@@ -39,7 +39,7 @@ impl DecimalProps for u64 {
     const BIAS: u64 = 398;
 
     const SIGN_MASK: u64 = 0b10000000u64 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u64 = 0b01100000u64 << (Self::BITS - 8);
+    const SPECIAL_ENC_MASK: u64 = 0b01100000u64 << (Self::BITS - 8);
     const INFINITY_MASK: Self = 0b01111000u64 << (Self::BITS - 8);
     const NAN_MASK: Self = 0b01111100u64 << (Self::BITS - 8);
 }
@@ -53,7 +53,7 @@ impl DecimalProps for u128 {
     const BIAS: u128 = 6176;
 
     const SIGN_MASK: u128 = 0b10000000u128 << (Self::BITS - 8);
-    const SPECIAL_ENCODING_MASK: u128 = 0b01100000u128 << (Self::BITS - 8);
+    const SPECIAL_ENC_MASK: u128 = 0b01100000u128 << (Self::BITS - 8);
     const INFINITY_MASK: Self = 0b01111000u128 << (Self::BITS - 8);
     const NAN_MASK: Self = 0b01111100u128 << (Self::BITS - 8);
 }

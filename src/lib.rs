@@ -9,10 +9,11 @@
 
 mod consts;
 
+mod d128_impl;
+mod d32_impl;
+mod d64_impl;
+
 use std::marker::PhantomData;
-use consts::DecimalProps;
-use std::fmt;
-use std::str::FromStr;
 pub use std::num::FpCategory;
 
 #[derive(Debug)]
@@ -49,37 +50,43 @@ impl Status {
 pub struct Flags(u8);
 
 impl Flags {
-//    pub fn is_invalid(&self) -> bool {
-//        (self.0 & details::BID_INVALID_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_denormal(&self) -> bool {
-//        (self.0 & details::BID_DENORMAL_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_zero_divide(&self) -> bool {
-//        (self.0 & details::BID_ZERO_DIVIDE_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_overflow(&self) -> bool {
-//        (self.0 & details::BID_OVERFLOW_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_underflow(&self) -> bool {
-//        (self.0 & details::BID_UNDERFLOW_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_inexact(&self) -> bool {
-//        (self.0 & details::BID_INEXACT_EXCEPTION) != 0
-//    }
-//
-//    pub fn is_clear(&self) -> bool {
-//        self.0 == 0
-//    }
+    //    pub fn is_invalid(&self) -> bool {
+    //        (self.0 & details::BID_INVALID_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_denormal(&self) -> bool {
+    //        (self.0 & details::BID_DENORMAL_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_zero_divide(&self) -> bool {
+    //        (self.0 & details::BID_ZERO_DIVIDE_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_overflow(&self) -> bool {
+    //        (self.0 & details::BID_OVERFLOW_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_underflow(&self) -> bool {
+    //        (self.0 & details::BID_UNDERFLOW_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_inexact(&self) -> bool {
+    //        (self.0 & details::BID_INEXACT_EXCEPTION) != 0
+    //    }
+    //
+    //    pub fn is_clear(&self) -> bool {
+    //        self.0 == 0
+    //    }
 }
 
-pub trait Context {
+pub trait Context: private::Sealed {
     fn op<T, F: FnOnce(Rounding) -> (T, Flags)>(cb: F) -> T;
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for super::DefaultContext {}
 }
 
 /// A default implementation of context which always uses `Nearest` rounding and ignores exceptions
@@ -108,260 +115,6 @@ pub type d64 = Decimal64<DefaultContext>;
 pub struct Decimal128<Ctx: Context>(u128, PhantomData<*const Ctx>);
 pub type d128 = Decimal128<DefaultContext>;
 
-macro_rules! gen_impl {
-    ($name:ident, $ty:ident) => {
-        impl <Ctx: $crate::Context> Clone for $name<Ctx> {
-            fn clone(&self) -> Self {
-                $name(self.0, PhantomData)
-            }
-        }
-
-        impl <Ctx: $crate::Context> Copy for $name<Ctx> { }
-
-        impl <Ctx: $crate::Context> fmt::Debug for $name<Ctx> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "[0x{1:00$x}]", $ty::BITS / 4, self.0)
-            }
-        }
-
-        impl <Ctx: $crate::Context> $name<Ctx> {
-            /// Returns `true` if this value is `NaN` and `false` otherwise.
-            pub fn is_nan(self) -> bool {
-                (self.0 & $ty::NAN_MASK) == $ty::NAN_MASK
-            }
-
-            /// Returns `true` if this value is positive infinity or negative infinity and `false`
-            /// otherwise.
-            pub fn is_infinite(self) -> bool {
-                (self.0 & $ty::NAN_MASK) == $ty::INFINITY_MASK
-            }
-
-            /// Returns `true` if this number is neither infinite nor `NaN`.
-            pub fn is_finite(self) -> bool {
-                (self.0 & $ty::INFINITY_MASK) != $ty::INFINITY_MASK
-            }
-
-            /// Returns `true` if the number is neither zero, infinite, [subnormal][subnormal], or
-            /// `NaN`.
-            ///
-            /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-            pub fn is_normal(self) -> bool {
-                if !self.is_finite() {
-                    return false; // NaN or Infinite
-                }
-                let unpacked = self.unpack();
-                if unpacked.coefficient == 0 {
-                    return false; // Zero or illegal
-                }
-                Self::is_normal_internal(unpacked)
-            }
-
-            /// Returns `true` if the number is [subnormal][subnormal].
-            ///
-            /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-            pub fn is_subnormal(self) -> bool {
-                if !self.is_finite() {
-                    return false; // NaN or Infinite
-                }
-                let unpacked = self.unpack();
-                if unpacked.coefficient == 0 {
-                    return false; // Zero or illegal
-                }
-                !Self::is_normal_internal(unpacked)
-            }
-
-            /// Returns the floating point category of the number. If only one property is going to
-            /// be tested, it is generally faster to use the specific predicate instead.
-            pub fn classify(self) -> FpCategory {
-                if self.is_nan() {
-                    FpCategory::Nan
-                } else if self.is_infinite() {
-                    FpCategory::Infinite
-                } else {
-                    let unpacked = self.unpack();
-                    if unpacked.coefficient == 0 {
-                        return FpCategory::Zero;
-                    } else if Self::is_normal_internal(unpacked) {
-                        FpCategory::Normal
-                    } else {
-                        FpCategory::Subnormal
-                    }
-                }
-            }
-
-            /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s
-            /// with positive sign bit and positive infinity.
-            pub fn is_sign_positive(self) -> bool {
-                !self.is_sign_negative()
-            }
-
-            /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s
-            /// with negative sign bit and negative infinity.
-            pub fn is_sign_negative(self) -> bool {
-                (self.0 & $ty::SIGN_MASK) != 0
-            }
-
-            /// Raw transmutation to the underlying type.
-            pub fn to_bits(self) -> $ty {
-                self.0
-            }
-
-            /// Raw transmutation from the underlying type.
-            pub fn from_bits(bits: $ty) -> Self {
-                $name(bits, PhantomData)
-            }
-
-            pub fn abs(self) -> Self {
-                Self::from_bits(self.0 & !($ty::SIGN_MASK))
-            }
-
-            fn is_normal_internal(unpacked: Unpacked<$ty>) -> bool {
-                if unpacked.exponent >= ($ty::COEFFICIENT_SIZE - 1) as u16 {
-                    true // Normal
-                } else {
-                    // Check if coefficient is high enough for an exponent
-                    let coeff = unpacked
-                        .coefficient
-                        .checked_mul($crate::consts::factors::$ty[unpacked.exponent as usize]);
-                    // If overflowed, then it's guaranteed to be a "normal" number
-                    coeff.map_or(true, |v| v >= ($ty::MAXIMUM_COEFFICIENT / 10))
-                }
-            }
-
-            fn unpack(self) -> Unpacked<$ty> {
-                debug_assert!(self.is_finite(), "can only unpack finite numbers");
-
-                const ONE: $ty = 1 as $ty;
-                const EXPONENT_MASK: $ty = (ONE << ($ty::EXPONENT_BITS + 2)) - 1;
-                const LONG_COEFF_SHIFT: usize = $ty::COEFFICIENT_BITS + 3;
-                const LONG_COEFF_MASK: $ty = (ONE << LONG_COEFF_SHIFT) - 1;
-
-                const SHORT_COEFF_SHIFT: usize = $ty::COEFFICIENT_BITS + 1;
-                const SHORT_COEFF_MASK: $ty = (ONE << SHORT_COEFF_SHIFT) - 1;
-                const SHORT_COEFF_HIGH_BIT: $ty = ONE << LONG_COEFF_SHIFT;
-
-                let sign = (self.0 & $ty::SIGN_MASK) != 0;
-                let mut unpacked =
-                    if (self.0 & $ty::SPECIAL_ENCODING_MASK) == $ty::SPECIAL_ENCODING_MASK {
-                        Unpacked {
-                            coefficient: (self.0 & SHORT_COEFF_MASK) | SHORT_COEFF_HIGH_BIT,
-                            exponent: ((self.0 >> SHORT_COEFF_SHIFT) & EXPONENT_MASK) as u16,
-                            sign,
-                        }
-                    } else {
-                        Unpacked {
-                            coefficient: self.0 & LONG_COEFF_MASK,
-                            exponent: ((self.0 >> LONG_COEFF_SHIFT) & EXPONENT_MASK) as u16,
-                            sign,
-                        }
-                    };
-                // Treat illegal significants as 0
-                if unpacked.coefficient >= $ty::MAXIMUM_COEFFICIENT {
-                    unpacked.coefficient = 0;
-                }
-
-                unpacked
-            }
-        }
-
-        /// Converts a string in base 10 to a float.
-        /// Accepts an optional decimal exponent.
-        ///
-        /// This function accepts strings such as
-        ///
-        /// * '3.14'
-        /// * '-3.14'
-        /// * '2.5E10', or equivalently, '2.5e10'
-        /// * '2.5E-10'
-        /// * '5.'
-        /// * '.5', or, equivalently,  '0.5'
-        /// * 'inf', '-inf', 'NaN'
-        ///
-        /// Leading and trailing whitespace represent an error.
-        ///
-        /// # Arguments
-        ///
-        /// * src - A string
-        ///
-        /// # Return value
-        ///
-        /// `Err(ParseDecimalError)` if the string did not represent a valid
-        /// number.  Otherwise, `Ok(n)` where `n` is the floating-point decimal
-        /// number represented by `src`.
-        impl <Ctx: $crate::Context> FromStr for $name<Ctx> {
-            type Err = ParseDecimalError;
-
-            fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
-                let mut bytes = s.as_bytes();
-                let mut sign: $ty = 0;
-
-                if bytes.is_empty() {
-                    return Err(ParseDecimalError::Empty);
-                }
-                if bytes.first() == Some(&b'-') {
-                    sign = $ty::SIGN_MASK;
-                    bytes = &bytes[1..];
-                } else if bytes.first() == Some(&b'+') {
-                    bytes = &bytes[1..];
-                };
-                if bytes.is_empty() {
-                    return Err(ParseDecimalError::Invalid);
-                }
-
-                if bytes == b"inf" {
-                    return Ok(Self::from_bits($ty::INFINITY_MASK | sign));
-                }
-
-                if bytes == b"NaN" {
-                    return Ok(Self::from_bits($ty::NAN_MASK));
-                }
-
-                while bytes.first() == Some(&b'0') {
-                    bytes = &bytes[1..];
-                }
-
-                let mut zeroes = 0;
-                let mut has_point = false;
-                if bytes.first() == Some(&b'.') {
-                    has_point = true;
-                    bytes = &bytes[1..];
-
-                    while bytes.first() == Some(&b'0') {
-                        bytes = &bytes[1..];
-                        zeroes += 1;
-                    }
-                }
-
-                if bytes.is_empty() {
-                    let exp = if $ty::BIAS < zeroes { 0 } else { $ty::BIAS - zeroes };
-                    let value = (exp << ($ty::COEFFICIENT_BITS + 3)) | sign;
-                    return Ok(Self::from_bits(value));
-                }
-
-                while bytes.first().map_or(false, |b| *b == b'.' || (*b >= b'0' && *b <= b'9')) {
-                    zeroes += 1;
-                    if bytes[0] == b'.' {
-                        if has_point {
-                            return Err(ParseDecimalError::Invalid);
-                        }
-                        has_point = true;
-                        zeroes = 0;
-                    }
-                    bytes = &bytes[1..];
-                }
-                unimplemented!()
-            }
-        }
-
-
-    };
-}
-
-gen_impl!(Decimal32, u32);
-gen_impl!(Decimal64, u64);
-gen_impl!(Decimal128, u128);
-
-
 #[derive(Debug)]
 struct Unpacked<T> {
     coefficient: T,
@@ -370,22 +123,21 @@ struct Unpacked<T> {
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod tests {
 
-    use super::{d128, FpCategory, DefaultContext};
+    use super::{d128, DefaultContext, FpCategory};
     #[test]
     fn it_works() {
-
         let x = "0.0001".parse::<d128>().unwrap();
         println!("boo {:?} {:x}", x.classify(), x.to_bits());
 
         let x = "0".parse::<d128>().unwrap();
         println!("{:?} {:x}", x.classify(), x.to_bits());
 
-
         // 0 => 30300000000000000000000000000000
         //0.0 => 303e0000000000000000000000000000
-//        `
+        //        `
 
         /*let x: u128 = 0x303e00000000000000000000000004d1;
         let y: u128 = 0x303e00000000000000000000000011d4;

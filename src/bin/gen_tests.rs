@@ -1,12 +1,12 @@
 extern crate dfp;
 
-use dfp::{Rounding, Status, FpCategory};
+use dfp::{FpCategory, Rounding, Status};
 use std::collections::BTreeMap;
 use std::error;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
-type Result<T> = std::result::Result<T, Box<error::Error>>;
+type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 fn read_spec() -> impl Iterator<Item = Result<String>> {
     let spec = File::open("./spec/readtest.in").unwrap();
@@ -19,13 +19,14 @@ fn read_spec() -> impl Iterator<Item = Result<String>> {
             let eol = line.find("--").unwrap_or(line.len());
             line.truncate(eol);
             Ok(line)
-        }).filter(|line| line.as_ref().map(|l| !l.trim().is_empty()).unwrap_or(true))
+        })
+        .filter(|line| line.as_ref().map(|l| !l.trim().is_empty()).unwrap_or(true))
 }
 
 struct TestCase {
     func: String,
     rounding: Rounding,
-    status: Status,
+    _status: Status,
     assert: String,
 }
 
@@ -52,10 +53,10 @@ fn parse_class(rnd: &str) -> FpCategory {
 }
 
 fn scan_str<'a>(iter: &mut &'a str) -> Option<&'a str> {
-    *iter = iter.trim_left();
+    *iter = iter.trim_start();
     let pos = iter.find(char::is_whitespace)?;
     let res = &iter[..pos];
-    *iter = iter[pos..].trim_left();
+    *iter = iter[pos..].trim_start();
     Some(res)
 }
 
@@ -65,9 +66,7 @@ fn scan_decimal(iter: &mut &str, ty: &str) -> Option<String> {
         let value = &value[1..value.len() - 1].replace(',', "");
         Some(format!("{}::from_bits(0x{})", ty, value))
     } else {
-        None
-        // FIXME: re-enable when we start supporting parsing numbers
-        //Some(format!("\"{}\".parse::<{}>().unwrap()", value, ty))
+        Some(format!("\"{}\".parse::<{}>().unwrap()", value, ty))
     }
 }
 
@@ -106,14 +105,20 @@ fn parse_unary_op(ty: &str, func: &str, mut spec: &str) -> Option<String> {
     let arg0 = scan_decimal(&mut spec, ty)?;
     let result = scan_decimal(&mut spec, ty)?;
     let _status = scan_status(&mut spec);
-    Some(format!("assert_eq!({}.{}().to_bits(), {}.to_bits());", arg0, func, result))
+    Some(format!(
+        "assert_eq!({}.{}().to_bits(), {}.to_bits());",
+        arg0, func, result
+    ))
 }
 
 fn parse_from_string(ty: &str, mut spec: &str) -> Option<String> {
     let arg0 = scan_str(&mut spec)?;
     let result = scan_decimal(&mut spec, ty)?;
     let _status = scan_status(&mut spec);
-    Some(format!("assert_eq!(parse_wrapper::<{}>(\"{}\").unwrap().to_bits(), {}.to_bits());", ty, arg0, result))
+    Some(format!(
+        "assert_eq!(parse_wrapper::<{}>(\"{}\").unwrap().to_bits(), {}.to_bits());",
+        ty, arg0, result
+    ))
 }
 
 fn parse_classify_op(ty: &str, mut spec: &str) -> Option<String> {
@@ -121,7 +126,10 @@ fn parse_classify_op(ty: &str, mut spec: &str) -> Option<String> {
     let category_str = scan_str(&mut spec)?;
     let category = parse_class(category_str);
     let _status = scan_status(&mut spec);
-    Some(format!("assert_eq!({}.classify(), FpCategory::{:?});", arg0, category))
+    Some(format!(
+        "assert_eq!({}.classify(), FpCategory::{:?});",
+        arg0, category
+    ))
 }
 
 fn parse_case(func: &str, spec: &str) -> Option<String> {
@@ -176,7 +184,8 @@ fn parse_spec(line: String) -> Option<TestCase> {
     Some(TestCase {
         func: func.to_owned(),
         rounding,
-        status: Status::from_bits(0),
+        // FIXME: scan status
+        _status: Status::from_bits(0),
         assert,
     })
 }
