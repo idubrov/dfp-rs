@@ -66,7 +66,7 @@ fn scan_decimal(iter: &mut &str, ty: &str) -> Option<String> {
         let value = &value[1..value.len() - 1].replace(',', "");
         Some(format!("{}::from_bits(0x{})", ty, value))
     } else {
-        Some(format!("\"{}\".parse::<{}>().unwrap()", value, ty))
+        None //Some(format!("\"{}\".parse::<{}>().unwrap()", value, ty))
     }
 }
 

@@ -5,6 +5,11 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
+const SIGN_MASK: u128 = 0b10000000 << (u128::BITS - 8);
+const SPECIAL_ENC_MASK: u128 = 0b01100000 << (u128::BITS - 8);
+const INFINITY_MASK: u128 = 0b01111000 << (u128::BITS - 8);
+const NAN_MASK: u128 = 0b01111100 << (u128::BITS - 8);
+
 impl<Ctx: crate::Context> Clone for Decimal128<Ctx> {
     fn clone(&self) -> Self {
         Decimal128(self.0, PhantomData)
@@ -22,18 +27,18 @@ impl<Ctx: crate::Context> fmt::Debug for Decimal128<Ctx> {
 impl<Ctx: crate::Context> Decimal128<Ctx> {
     /// Returns `true` if this value is `NaN` and `false` otherwise.
     pub fn is_nan(self) -> bool {
-        (self.0 & u128::NAN_MASK) == u128::NAN_MASK
+        (self.0 & NAN_MASK) == NAN_MASK
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity and `false`
     /// otherwise.
     pub fn is_infinite(self) -> bool {
-        (self.0 & u128::NAN_MASK) == u128::INFINITY_MASK
+        (self.0 & NAN_MASK) == INFINITY_MASK
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     pub fn is_finite(self) -> bool {
-        (self.0 & u128::INFINITY_MASK) != u128::INFINITY_MASK
+        (self.0 & INFINITY_MASK) != INFINITY_MASK
     }
 
     /// Returns `true` if the number is neither zero, infinite, [subnormal][subnormal], or
@@ -93,7 +98,7 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
     /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s
     /// with negative sign bit and negative infinity.
     pub fn is_sign_negative(self) -> bool {
-        (self.0 & u128::SIGN_MASK) != 0
+        (self.0 & SIGN_MASK) != 0
     }
 
     /// Raw transmutation to the underlying type.
@@ -107,7 +112,7 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
     }
 
     pub fn abs(self) -> Self {
-        Self::from_bits(self.0 & !(u128::SIGN_MASK))
+        Self::from_bits(self.0 & !SIGN_MASK)
     }
 
     fn is_normal_internal(unpacked: Unpacked<u128>) -> bool {
@@ -134,8 +139,8 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
         const SHORT_COEFF_MASK: u128 = (1 << SHORT_COEFF_SHIFT) - 1;
         const SHORT_COEFF_HIGH_BIT: u128 = 1 << LONG_COEFF_SHIFT;
 
-        let sign = (self.0 & u128::SIGN_MASK) != 0;
-        let mut unpacked = if (self.0 & u128::SPECIAL_ENC_MASK) == u128::SPECIAL_ENC_MASK {
+        let sign = (self.0 & SIGN_MASK) != 0;
+        let mut unpacked = if (self.0 & SPECIAL_ENC_MASK) == SPECIAL_ENC_MASK {
             Unpacked {
                 coefficient: (self.0 & SHORT_COEFF_MASK) | SHORT_COEFF_HIGH_BIT,
                 exponent: ((self.0 >> SHORT_COEFF_SHIFT) & EXPONENT_MASK) as u16,
@@ -193,7 +198,7 @@ impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
             return Err(ParseDecimalError::Empty);
         }
         if bytes.first() == Some(&b'-') {
-            sign = u128::SIGN_MASK;
+            sign = SIGN_MASK;
             bytes = &bytes[1..];
         } else if bytes.first() == Some(&b'+') {
             bytes = &bytes[1..];
@@ -203,11 +208,11 @@ impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
         }
 
         if bytes == b"inf" {
-            return Ok(Self::from_bits(u128::INFINITY_MASK | sign));
+            return Ok(Self::from_bits(INFINITY_MASK | sign));
         }
 
         if bytes == b"NaN" {
-            return Ok(Self::from_bits(u128::NAN_MASK));
+            return Ok(Self::from_bits(NAN_MASK));
         }
 
         while bytes.first() == Some(&b'0') {
