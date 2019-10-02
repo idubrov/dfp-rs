@@ -2,7 +2,9 @@
 #![allow(non_snake_case)]
 extern crate dfp;
 
+mod util;
 use dfp::{d32, d64, d128, FpCategory};
+use util::parse_wrapper;
 
 #[test]
 fn bid128_abs() {
@@ -68,6 +70,72 @@ fn bid128_class() {
     assert_eq!(d128::from_bits(0x8000314DC6448D9338C15B0A00000001).classify(), FpCategory::Normal);
     assert_eq!(d128::from_bits(0x8000314DC6448D9338C15B0A00000000).classify(), FpCategory::Normal);
     assert_eq!(d128::from_bits(0x8000314DC6448D9338C15B09FFFFFFFF).classify(), FpCategory::Subnormal);
+}
+
+#[test]
+fn bid128_from_string() {
+    assert_eq!(parse_wrapper::<d128>("-9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0xafffed09bead87c0378d8e63ffffffff).to_bits());
+    assert_eq!(parse_wrapper::<d128>("-9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0xb000314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0x3000314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0x3000314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0x3000314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0x2fffed09bead87c0378d8e63ffffffff).to_bits());
+    assert_eq!(parse_wrapper::<d128>("9.9999999999999999999999999999999995").unwrap().to_bits(), d128::from_bits(0x2fffed09bead87c0378d8e63ffffffff).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000015").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000002).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000015").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000002).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000015").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000002).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000015").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000015").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("000.0").unwrap().to_bits(), d128::from_bits(0x303e0000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("0.0000000000000000000000000000000000000000000000000000000000000001001").unwrap().to_bits(), d128::from_bits(0x2fba00000000000000000000000003e9).to_bits());
+    assert_eq!(parse_wrapper::<d128>("0.0000000000000000000000000000000000000000000000000000000000000001001").unwrap().to_bits(), d128::from_bits(0x2fba00000000000000000000000003e9).to_bits());
+    assert_eq!(parse_wrapper::<d128>("0.").unwrap().to_bits(), d128::from_bits(0x30400000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.").unwrap().to_bits(), d128::from_bits(0x30400000000000000000000000000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1..").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000005").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000005").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000005").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000005").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.0000000000000000000000000000000005").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.00000000000000000000000000000000051").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.00000000000000000000000000000000051").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.00000000000000000000000000000000051").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000001).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.00000000000000000000000000000000051").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.00000000000000000000000000000000051").unwrap().to_bits(), d128::from_bits(0x2ffe314dc6448d9338c15b0a00000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.9999999999999999999999999990000004999999999999999").unwrap().to_bits(), d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.9999999999999999999999999990000004999999999999999").unwrap().to_bits(), d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc1).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.9999999999999999999999999990000004999999999999999").unwrap().to_bits(), d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.9999999999999999999999999990000004999999999999999").unwrap().to_bits(), d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.9999999999999999999999999990000004999999999999999").unwrap().to_bits(), d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.1E2").unwrap().to_bits(), d128::from_bits(0x3042000000000000000000000000000b).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.1P2").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.1EE").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.1P-2").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("1.1E-2E").unwrap().to_bits(), d128::from_bits(0x303a000000000000000000000000000b).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+INF").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+INFi").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+NAN").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+SNAN").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+SNANi").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+inf").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+nan").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+snan").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+INFINITY").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+infinity").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+INFiNITY").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("+INFINITYi").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("INF").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("INFi").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("NAN").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("SNAN").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("SNANi").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("inf").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("nan").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("snan").unwrap().to_bits(), d128::from_bits(0x7e000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("INFINITY").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("infinity").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("INFiNITY").unwrap().to_bits(), d128::from_bits(0x78000000000000000000000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d128>("INFINITYi").unwrap().to_bits(), d128::from_bits(0x7c000000000000000000000000000000).to_bits());
 }
 
 #[test]
@@ -286,6 +354,99 @@ fn bid32_class() {
 }
 
 #[test]
+fn bid32_from_string() {
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0").unwrap().to_bits(), d32::from_bits(0x3200000a).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-1.0").unwrap().to_bits(), d32::from_bits(0xb200000a).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0e-96").unwrap().to_bits(), d32::from_bits(0x0200000a).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-1.0e-96").unwrap().to_bits(), d32::from_bits(0x8200000a).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.999999e-95").unwrap().to_bits(), d32::from_bits(0x6018967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-9.999999e-95").unwrap().to_bits(), d32::from_bits(0xe018967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.999999e96").unwrap().to_bits(), d32::from_bits(0x77f8967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-9.999999e96").unwrap().to_bits(), d32::from_bits(0xf7f8967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+inf").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+Inf").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INF").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+NaN").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+NAN").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-nan").unwrap().to_bits(), d32::from_bits(0xfc000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+SNaN").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+SNAN").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-snan").unwrap().to_bits(), d32::from_bits(0xfe000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-9.9999995").unwrap().to_bits(), d32::from_bits(0xebf8967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("-9.9999995").unwrap().to_bits(), d32::from_bits(0xb00f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.9999995").unwrap().to_bits(), d32::from_bits(0x300f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.9999995").unwrap().to_bits(), d32::from_bits(0x300f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.9999995").unwrap().to_bits(), d32::from_bits(0x300f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.9999995").unwrap().to_bits(), d32::from_bits(0x6bf8967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>("9.9999995").unwrap().to_bits(), d32::from_bits(0x6bf8967f).to_bits());
+    assert_eq!(parse_wrapper::<d32>(".0").unwrap().to_bits(), d32::from_bits(0x32000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("000.0").unwrap().to_bits(), d32::from_bits(0x32000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("0.0000000000000000000000000000000000001001").unwrap().to_bits(), d32::from_bits(0x1e8003e9).to_bits());
+    assert_eq!(parse_wrapper::<d32>("0.0000000000000000000000000000000000001001").unwrap().to_bits(), d32::from_bits(0x1e8003e9).to_bits());
+    assert_eq!(parse_wrapper::<d32>("0.").unwrap().to_bits(), d32::from_bits(0x32800000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.").unwrap().to_bits(), d32::from_bits(0x32800001).to_bits());
+    assert_eq!(parse_wrapper::<d32>("a").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("..").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1..").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("0.0.").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000005").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000005").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000005").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000005").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000005").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.00000051").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.00000051").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.00000051").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.00000051").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.00000051").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000004999999999999999").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000004999999999999999").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000004999999999999999").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000004999999999999999").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000004999999999999999").unwrap().to_bits(), d32::from_bits(0x2f8f4240).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.1E2").unwrap().to_bits(), d32::from_bits(0x3300000b).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.1P2").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.1EE").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.1P-2").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.1E-2E").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4242).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1.0000015").unwrap().to_bits(), d32::from_bits(0x2f8f4241).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INF").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INFi").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+NAN").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+SNAN").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+SNANi").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+inf").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+nan").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+snan").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INFINITY").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+infinity").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INFiNITY").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("+INFINITYi").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("INF").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("INFi").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("NAN").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("SNAN").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("SNANi").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("inf").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("nan").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("snan").unwrap().to_bits(), d32::from_bits(0x7e000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("INFINITY").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("infinity").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("INFiNITY").unwrap().to_bits(), d32::from_bits(0x78000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("INFINITYi").unwrap().to_bits(), d32::from_bits(0x7c000000).to_bits());
+    assert_eq!(parse_wrapper::<d32>("1E-102").unwrap().to_bits(), d32::from_bits(0x00000000).to_bits());
+}
+
+#[test]
 fn bid32_isFinite() {
     assert!(d32::from_bits(0x00000001).is_finite());
     assert!(d32::from_bits(0x00080001).is_finite());
@@ -449,6 +610,75 @@ fn bid64_class() {
     assert_eq!(d64::from_bits(0xfde7bf7f3d7bafd8).classify(), FpCategory::Nan);
     assert_eq!(d64::from_bits(0xfffefffffffffeff).classify(), FpCategory::Nan);
     assert_eq!(d64::from_bits(0x8000000040100000).classify(), FpCategory::Subnormal);
+}
+
+#[test]
+fn bid64_from_string() {
+    assert_eq!(parse_wrapper::<d64>("+Inf").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+NaN").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+SNaN").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("-9.9999999999999995").unwrap().to_bits(), d64::from_bits(0xebfb86f26fc0ffff).to_bits());
+    assert_eq!(parse_wrapper::<d64>("-9.9999999999999995").unwrap().to_bits(), d64::from_bits(0xb0038d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("9.9999999999999995").unwrap().to_bits(), d64::from_bits(0x30038d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("9.9999999999999995").unwrap().to_bits(), d64::from_bits(0x30038d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("9.9999999999999995").unwrap().to_bits(), d64::from_bits(0x30038d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("9.9999999999999995").unwrap().to_bits(), d64::from_bits(0x6bfb86f26fc0ffff).to_bits());
+    assert_eq!(parse_wrapper::<d64>("9.9999999999999995").unwrap().to_bits(), d64::from_bits(0x6bfb86f26fc0ffff).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000015").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68002).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000015").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68002).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000015").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68002).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000015").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000015").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("000.0").unwrap().to_bits(), d64::from_bits(0x31a0000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("0.0000000000000000000000000000000000000000000001001").unwrap().to_bits(), d64::from_bits(0x2ba00000000003e9).to_bits());
+    assert_eq!(parse_wrapper::<d64>("0.0000000000000000000000000000000000000000000001001").unwrap().to_bits(), d64::from_bits(0x2ba00000000003e9).to_bits());
+    assert_eq!(parse_wrapper::<d64>("0.").unwrap().to_bits(), d64::from_bits(0x31c0000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.").unwrap().to_bits(), d64::from_bits(0x31c0000000000001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1..").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000005").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000005").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000005").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000005").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000005").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.00000000000000051").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.00000000000000051").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.00000000000000051").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.00000000000000051").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.00000000000000051").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000004999999999999999").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000004999999999999999").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68001).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000004999999999999999").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000004999999999999999").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.0000000000000004999999999999999").unwrap().to_bits(), d64::from_bits(0x2fe38d7ea4c68000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.1E2").unwrap().to_bits(), d64::from_bits(0x31e000000000000b).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.1P2").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.1EE").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.1P-2").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("1.1E-2E").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+INF").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+INFi").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+NAN").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+SNAN").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+SNANi").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+inf").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+nan").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+snan").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+INFINITY").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+infinity").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+INFiNITY").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("+INFINITYi").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("INF").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("INFi").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("NAN").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("SNAN").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("SNANi").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("inf").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("nan").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("snan").unwrap().to_bits(), d64::from_bits(0x7e00000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("INFINITY").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("infinity").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("INFiNITY").unwrap().to_bits(), d64::from_bits(0x7800000000000000).to_bits());
+    assert_eq!(parse_wrapper::<d64>("INFINITYi").unwrap().to_bits(), d64::from_bits(0x7c00000000000000).to_bits());
 }
 
 #[test]

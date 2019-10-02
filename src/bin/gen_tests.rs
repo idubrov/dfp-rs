@@ -109,6 +109,13 @@ fn parse_unary_op(ty: &str, func: &str, mut spec: &str) -> Option<String> {
     Some(format!("assert_eq!({}.{}().to_bits(), {}.to_bits());", arg0, func, result))
 }
 
+fn parse_from_string(ty: &str, mut spec: &str) -> Option<String> {
+    let arg0 = scan_str(&mut spec)?;
+    let result = scan_decimal(&mut spec, ty)?;
+    let _status = scan_status(&mut spec);
+    Some(format!("assert_eq!(parse_wrapper::<{}>(\"{}\").unwrap().to_bits(), {}.to_bits());", ty, arg0, result))
+}
+
 fn parse_classify_op(ty: &str, mut spec: &str) -> Option<String> {
     let arg0 = scan_decimal(&mut spec, ty)?;
     let category_str = scan_str(&mut spec)?;
@@ -151,6 +158,10 @@ fn parse_case(func: &str, spec: &str) -> Option<String> {
         "bid64_abs" => parse_unary_op("d64", "abs", spec),
         "bid128_abs" => parse_unary_op("d128", "abs", spec),
 
+        "bid32_from_string" => parse_from_string("d32", spec),
+        "bid64_from_string" => parse_from_string("d64", spec),
+        "bid128_from_string" => parse_from_string("d128", spec),
+
         _ => None,
     }
 }
@@ -187,7 +198,9 @@ fn main() -> Result<()> {
     writeln!(out, "#![allow(non_snake_case)]")?;
     writeln!(out, "extern crate dfp;")?;
     writeln!(out)?;
+    writeln!(out, "mod util;")?;
     writeln!(out, "use dfp::{{d32, d64, d128, FpCategory}};")?;
+    writeln!(out, "use util::parse_wrapper;")?;
     writeln!(out)?;
 
     for (key, cases) in cases {

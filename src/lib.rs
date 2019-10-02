@@ -12,7 +12,14 @@ mod consts;
 use std::marker::PhantomData;
 use consts::DecimalProps;
 use std::fmt;
+use std::str::FromStr;
 pub use std::num::FpCategory;
+
+#[derive(Debug)]
+pub enum ParseDecimalError {
+    Empty,
+    Invalid,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Rounding {
@@ -256,6 +263,97 @@ macro_rules! gen_impl {
                 unpacked
             }
         }
+
+        /// Converts a string in base 10 to a float.
+        /// Accepts an optional decimal exponent.
+        ///
+        /// This function accepts strings such as
+        ///
+        /// * '3.14'
+        /// * '-3.14'
+        /// * '2.5E10', or equivalently, '2.5e10'
+        /// * '2.5E-10'
+        /// * '5.'
+        /// * '.5', or, equivalently,  '0.5'
+        /// * 'inf', '-inf', 'NaN'
+        ///
+        /// Leading and trailing whitespace represent an error.
+        ///
+        /// # Arguments
+        ///
+        /// * src - A string
+        ///
+        /// # Return value
+        ///
+        /// `Err(ParseDecimalError)` if the string did not represent a valid
+        /// number.  Otherwise, `Ok(n)` where `n` is the floating-point decimal
+        /// number represented by `src`.
+        impl <Ctx: $crate::Context> FromStr for $name<Ctx> {
+            type Err = ParseDecimalError;
+
+            fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
+                let mut bytes = s.as_bytes();
+                let mut sign: $ty = 0;
+
+                if bytes.is_empty() {
+                    return Err(ParseDecimalError::Empty);
+                }
+                if bytes.first() == Some(&b'-') {
+                    sign = $ty::SIGN_MASK;
+                    bytes = &bytes[1..];
+                } else if bytes.first() == Some(&b'+') {
+                    bytes = &bytes[1..];
+                };
+                if bytes.is_empty() {
+                    return Err(ParseDecimalError::Invalid);
+                }
+
+                if bytes == b"inf" {
+                    return Ok(Self::from_bits($ty::INFINITY_MASK | sign));
+                }
+
+                if bytes == b"NaN" {
+                    return Ok(Self::from_bits($ty::NAN_MASK));
+                }
+
+                while bytes.first() == Some(&b'0') {
+                    bytes = &bytes[1..];
+                }
+
+                let mut zeroes = 0;
+                let mut has_point = false;
+                if bytes.first() == Some(&b'.') {
+                    has_point = true;
+                    bytes = &bytes[1..];
+
+                    while bytes.first() == Some(&b'0') {
+                        bytes = &bytes[1..];
+                        zeroes += 1;
+                    }
+                }
+
+                if bytes.is_empty() {
+                    let exp = if $ty::BIAS < zeroes { 0 } else { $ty::BIAS - zeroes };
+                    let value = (exp << ($ty::COEFFICIENT_BITS + 3)) | sign;
+                    return Ok(Self::from_bits(value));
+                }
+
+                while bytes.first().map_or(false, |b| *b == b'.' || (*b >= b'0' && *b <= b'9')) {
+                    zeroes += 1;
+                    if bytes[0] == b'.' {
+                        if has_point {
+                            return Err(ParseDecimalError::Invalid);
+                        }
+                        has_point = true;
+                        zeroes = 0;
+                    }
+                    bytes = &bytes[1..];
+                }
+                unimplemented!()
+            }
+        }
+
+
     };
 }
 
@@ -278,9 +376,15 @@ mod tests {
     #[test]
     fn it_works() {
 
-        let x = d128::from_bits(0x0001ed09bead87c0378d8e62ffffffff);
-        assert_eq!(x.classify(), FpCategory::Normal);
-        println!("HELLO {:?}", x);
+        let x = "0.0001".parse::<d128>().unwrap();
+        println!("boo {:?} {:x}", x.classify(), x.to_bits());
+
+        let x = "0".parse::<d128>().unwrap();
+        println!("{:?} {:x}", x.classify(), x.to_bits());
+
+
+        // 0 => 30300000000000000000000000000000
+        //0.0 => 303e0000000000000000000000000000
 //        `
 
         /*let x: u128 = 0x303e00000000000000000000000004d1;
