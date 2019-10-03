@@ -11,6 +11,8 @@ mod consts;
 mod d128_impl;
 mod d32_impl;
 mod d64_impl;
+#[cfg(test)]
+mod tests;
 
 use std::marker::PhantomData;
 pub use std::num::FpCategory;
@@ -137,54 +139,22 @@ declare_context!(
     "An implementation of context which always uses `TiesAway` rounding and ignores exceptions"
 );
 
-/// A 32-bit decimal floating point type, as specified by IEEE 754-2008.
+/// A template for a decimal floating point type, as specified by IEEE 754-2008.
 #[repr(transparent)]
-pub struct Decimal32<Ctx: Context>(u32, PhantomData<*const Ctx>);
-pub type d32 = Decimal32<NearestRoundingContext>;
+pub struct Decimal<T, Ctx: Context>(T, PhantomData<*const Ctx>);
+
+/// A 32-bit decimal floating point type, as specified by IEEE 754-2008.
+pub type d32 = Decimal<u32, NearestRoundingContext>;
 
 /// A 64-bit decimal floating point type, as specified by IEEE 754-2008.
-#[repr(transparent)]
-pub struct Decimal64<Ctx: Context>(u64, PhantomData<*const Ctx>);
-pub type d64 = Decimal64<NearestRoundingContext>;
+pub type d64 = Decimal<u64, NearestRoundingContext>;
 
 /// A 128-bit decimal floating point type, as specified by IEEE 754-2008.
-#[repr(transparent)]
-pub struct Decimal128<Ctx: Context>(u128, PhantomData<*const Ctx>);
-pub type d128 = Decimal128<NearestRoundingContext>;
+pub type d128 = Decimal<u128, NearestRoundingContext>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Unpacked<T> {
     coefficient: T,
     exponent: u16,
     sign: bool,
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod tests {
-    use super::FpCategory;
-    #[test]
-    fn it_works() {
-        type d32 = crate::Decimal32<crate::DownRoundingContext>;
-        //let x = "-99999999".parse::<d32>().unwrap();
-        //println!("boo {:?} {:x}", x.classify(), x.to_bits());
-        // 0 => 30300000000000000000000000000000
-        //0.0 => 303e0000000000000000000000000000
-        //        `
-
-        type d128 = crate::Decimal128<crate::NearestRoundingContext>;
-        let expected = d128::from_bits(0x3000314dc6448d9338c15b0a00000000);
-        let unpacked: crate::Unpacked<_> = expected.into();
-        eprintln!("{:?}", unpacked);
-        let actual = "9.9999999999999999999999999999999995".parse::<d128>().unwrap();
-        //3000314dc6448d9338c15b0a00000000
-
-        //bid128_from_string 2 9.9999999999999999999999999999999995 [3000314dc6448d9338c15b0a00000000] 20
-        /*let x: u128 = 0x303e00000000000000000000000004d1;
-        let y: u128 = 0x303e00000000000000000000000011d4;
-        let z: u128 = 0x303e00000000000000000000000016a5;
-
-        let zz = super::d128_add(x, y);
-        assert_eq!(z, zz);*/
-    }
 }

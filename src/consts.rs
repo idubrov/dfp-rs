@@ -1,4 +1,4 @@
-pub trait DecimalProps {
+pub trait DecimalProps: Copy {
     // Total size (bits)
     const BITS: usize;
     // Exponent continuation field (bits)
@@ -38,6 +38,7 @@ impl DecimalProps for u128 {
     const BIAS: isize = 6176;
 }
 
+#[allow(clippy::unreadable_literal)]
 pub mod factors {
     pub const u32: [u32; 7] = [1, 10, 100, 1000, 10000, 100000, 1000000];
     pub const u64: [u64; 16] = [

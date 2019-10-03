@@ -1,17 +1,17 @@
 // **NOTE**: THIS FILE IS AUTO-GENERATED FROM d32_impl.rs. DO NOT MODIFY!
 use crate::consts::DecimalProps;
-use crate::{Decimal128, FpCategory, ParseDecimalError, Rounding, Unpacked};
+use crate::{Decimal, FpCategory, ParseDecimalError, Rounding, Unpacked};
 use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-const SIGN_MASK: u128 = 0b10000000 << (u128::BITS - 8);
+const SIGN_MASK: u128 = 0b1000_0000 << (u128::BITS - 8);
 
 /// Mask for "special encoding" (two bits after the sign bit). If the 2 bits after the sign bit
 /// are `11`, then we use a "short" coefficient representation with implicit `100` prefix.
-const SPECIAL_ENC_MASK: u128 = 0b01100000 << (u128::BITS - 8);
-const INFINITY_MASK: u128 = 0b01111000 << (u128::BITS - 8);
-const NAN_MASK: u128 = 0b01111100 << (u128::BITS - 8);
+const SPECIAL_ENC_MASK: u128 = 0b0110_0000 << (u128::BITS - 8);
+const INFINITY_MASK: u128 = 0b0111_1000 << (u128::BITS - 8);
+const NAN_MASK: u128 = 0b0111_1100 << (u128::BITS - 8);
 /// Add 2 -- two bits in front of the exponent bits are also part of the exponent, as long as they
 /// are not `11`.
 const EXPONENT_MASK: u128 = (1 << (u128::EXPONENT_BITS + 2)) - 1;
@@ -29,22 +29,22 @@ const SHORT_COEFF_SHIFT: usize = u128::COEFFICIENT_BITS + 1;
 const SHORT_COEFF_MASK: u128 = (1 << SHORT_COEFF_SHIFT) - 1;
 const SHORT_COEFF_HIGH_BIT: u128 = 1 << LONG_COEFF_SHIFT;
 
-impl<Ctx: crate::Context> Clone for Decimal128<Ctx> {
+impl<Ctx: crate::Context> Clone for Decimal<u128, Ctx> {
     fn clone(&self) -> Self {
-        Decimal128(self.0, PhantomData)
+        Decimal(self.0, PhantomData)
     }
 }
 
-impl<Ctx: crate::Context> Copy for Decimal128<Ctx> {}
+impl<Ctx: crate::Context> Copy for Decimal<u128, Ctx> {}
 
-impl<Ctx: crate::Context> fmt::Debug for Decimal128<Ctx> {
+impl<Ctx: crate::Context> fmt::Debug for Decimal<u128, Ctx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[0x{1:00$x}]", u128::BITS / 4, self.0)
     }
 }
 
-impl<Ctx: crate::Context> From<Decimal128<Ctx>> for Unpacked<u128> {
-    fn from(value: Decimal128<Ctx>) -> Self {
+impl<Ctx: crate::Context> From<Decimal<u128, Ctx>> for Unpacked<u128> {
+    fn from(value: Decimal<u128, Ctx>) -> Self {
         debug_assert!(value.is_finite(), "can only unpack finite numbers");
 
         let sign = (value.0 & SIGN_MASK) != 0;
@@ -71,10 +71,16 @@ impl<Ctx: crate::Context> From<Decimal128<Ctx>> for Unpacked<u128> {
     }
 }
 
-impl<Ctx: crate::Context> From<Unpacked<u128>> for Decimal128<Ctx> {
+impl<Ctx: crate::Context> From<Unpacked<u128>> for Decimal<u128, Ctx> {
     fn from(unpacked: Unpacked<u128>) -> Self {
-        debug_assert!(unpacked.coefficient < u128::MAXIMUM_COEFFICIENT, "coefficient is too large");
-        debug_assert!(unpacked.exponent < (0b11 << u128::EXPONENT_BITS), "exponent is too large");
+        debug_assert!(
+            unpacked.coefficient < u128::MAXIMUM_COEFFICIENT,
+            "coefficient is too large"
+        );
+        debug_assert!(
+            unpacked.exponent < (0b11 << u128::EXPONENT_BITS),
+            "exponent is too large"
+        );
 
         let mut value: u128 = if unpacked.sign { SIGN_MASK } else { 0 };
         if (unpacked.coefficient & SHORT_COEFF_HIGH_BIT) == SHORT_COEFF_HIGH_BIT {
@@ -84,24 +90,24 @@ impl<Ctx: crate::Context> From<Unpacked<u128>> for Decimal128<Ctx> {
             value |= unpacked.coefficient & LONG_COEFF_MASK;
             value |= u128::from(unpacked.exponent) << LONG_COEFF_SHIFT;
         }
-        Decimal128(value, PhantomData)
+        Decimal(value, PhantomData)
     }
 }
 
-impl<Ctx: crate::Context> Decimal128<Ctx> {
+impl<Ctx: crate::Context> Decimal<u128, Ctx> {
     /// Returns `true` if this value is `NaN` and `false` otherwise.
-    pub fn is_nan(self) -> bool {
+    pub fn is_nan(&self) -> bool {
         (self.0 & NAN_MASK) == NAN_MASK
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity and `false`
     /// otherwise.
-    pub fn is_infinite(self) -> bool {
+    pub fn is_infinite(&self) -> bool {
         (self.0 & NAN_MASK) == INFINITY_MASK
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
-    pub fn is_finite(self) -> bool {
+    pub fn is_finite(&self) -> bool {
         (self.0 & INFINITY_MASK) != INFINITY_MASK
     }
 
@@ -109,7 +115,7 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
     /// `NaN`.
     ///
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    pub fn is_normal(self) -> bool {
+    pub fn is_normal(&self) -> bool {
         if !self.is_finite() {
             return false; // NaN or Infinite
         }
@@ -123,7 +129,7 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
     /// Returns `true` if the number is [subnormal][subnormal].
     ///
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    pub fn is_subnormal(self) -> bool {
+    pub fn is_subnormal(&self) -> bool {
         if !self.is_finite() {
             return false; // NaN or Infinite
         }
@@ -144,7 +150,7 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
         } else {
             let unpacked = self.unpack();
             if unpacked.coefficient == 0 {
-                return FpCategory::Zero;
+                FpCategory::Zero
             } else if Self::is_normal_internal(unpacked) {
                 FpCategory::Normal
             } else {
@@ -155,24 +161,24 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
 
     /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s
     /// with positive sign bit and positive infinity.
-    pub fn is_sign_positive(self) -> bool {
+    pub fn is_sign_positive(&self) -> bool {
         !self.is_sign_negative()
     }
 
     /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s
     /// with negative sign bit and negative infinity.
-    pub fn is_sign_negative(self) -> bool {
+    pub fn is_sign_negative(&self) -> bool {
         (self.0 & SIGN_MASK) != 0
     }
 
     /// Raw transmutation to the underlying type.
-    pub fn to_bits(self) -> u128 {
+    pub fn to_bits(&self) -> u128 {
         self.0
     }
 
     /// Raw transmutation from the underlying type.
     pub fn from_bits(bits: u128) -> Self {
-        Decimal128(bits, PhantomData)
+        Decimal(bits, PhantomData)
     }
 
     pub fn abs(self) -> Self {
@@ -192,39 +198,36 @@ impl<Ctx: crate::Context> Decimal128<Ctx> {
         }
     }
 
-    fn unpack(self) -> Unpacked<u128> {
+    pub(crate) fn unpack(self) -> Unpacked<u128> {
         self.into()
     }
-}
 
-/// Converts a string in base 10 to a float.
-/// Accepts an optional decimal exponent.
-///
-/// This function accepts strings such as
-///
-/// * '3.14'
-/// * '-3.14'
-/// * '2.5E10', or equivalently, '2.5e10'
-/// * '2.5E-10'
-/// * '5.'
-/// * '.5', or, equivalently,  '0.5'
-/// * 'inf', '-inf', 'NaN'
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * src - A string
-///
-/// # Return value
-///
-/// `Err(ParseDecimalError)` if the string did not represent a valid
-/// number.  Otherwise, `Ok(n)` where `n` is the floating-point decimal
-/// number represented by `src`.
-impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
-    type Err = ParseDecimalError;
-
-    fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
+    /// Converts a string in base 10 to a float.
+    /// Accepts an optional decimal exponent.
+    ///
+    /// This function accepts strings such as
+    ///
+    /// * '3.14'
+    /// * '-3.14'
+    /// * '2.5E10', or equivalently, '2.5e10'
+    /// * '2.5E-10'
+    /// * '5.'
+    /// * '.5', or, equivalently,  '0.5'
+    /// * 'inf', '-inf', 'NaN'
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// * src - A string
+    /// * rounding - An explicit rounding mode to use
+    ///
+    /// # Return value
+    ///
+    /// `Err(ParseDecimalError)` if the string did not represent a valid
+    /// number.  Otherwise, `Ok(n)` where `n` is the floating-point decimal
+    /// number represented by `src`.
+    pub fn parse_rounding(s: &str, rounding: Rounding) -> Result<Self, ParseDecimalError> {
         let mut bytes = s.as_bytes();
         // Sign mask of the number; 0 for positive numbers
         let mut sign: u128 = 0;
@@ -299,7 +302,7 @@ impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
                 coefficient += u128::from(digit);
             } else if coeff_digits == u128::COEFFICIENT_SIZE + 1 {
                 // We are at the first digit that will be rounded off
-                let round_up = match Ctx::rounding() {
+                let round_up = match rounding {
                     Rounding::Nearest if digit == 5 => {
                         let ahead = bytes.get(1).cloned().unwrap_or(b'0');
                         let is_odd = (coefficient % 2) == 1;
@@ -308,8 +311,8 @@ impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
                     Rounding::Nearest => digit > 5,
                     Rounding::Down => sign != 0,
                     Rounding::Up => sign == 0,
-                    Rounding::TiesAway  => digit >= 5,
-                    Rounding::Zero  => false,
+                    Rounding::TiesAway => digit >= 5,
+                    Rounding::Zero => false,
                 };
                 if round_up {
                     coefficient += 1;
@@ -325,6 +328,25 @@ impl<Ctx: crate::Context> FromStr for Decimal128<Ctx> {
             }
             bytes = &bytes[1..];
         }
-        unimplemented!("coefficient: {}, exponent: {}", coefficient, u128::BIAS - exponent);
+
+        let exponent: isize = (u128::BIAS as isize) - exponent;
+        assert!(
+            exponent < (0b11 << u128::EXPONENT_BITS),
+            "FIXME: exponent is too large"
+        );
+        let unpacked = Unpacked {
+            coefficient,
+            exponent: exponent as u16,
+            sign: sign != 0,
+        };
+        Ok(unpacked.into())
+    }
+}
+
+impl<Ctx: crate::Context> FromStr for Decimal<u128, Ctx> {
+    type Err = ParseDecimalError;
+
+    fn from_str(s: &str) -> Result<Self, ParseDecimalError> {
+        Self::parse_rounding(s, Ctx::rounding())
     }
 }
