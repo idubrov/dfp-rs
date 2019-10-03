@@ -40,9 +40,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     writeln!(out, "pub mod util;")?;
     writeln!(out, "use dfp::{{d32, d64, d128, FpCategory, Rounding}};")?;
     writeln!(out, "use self::util::Bits;")?;
-    writeln!(out)?;
 
     for (key, cases) in cases {
+        writeln!(out)?;
         writeln!(out, "#[test]")?;
         writeln!(out, "#[rustfmt::skip]")?;
         writeln!(out, "fn {}() {{", key)?;
@@ -50,7 +50,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             writeln!(out, "    {}", case)?;
         }
         writeln!(out, "}}")?;
-        writeln!(out)?;
     }
 
     Ok(())

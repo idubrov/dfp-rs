@@ -83,6 +83,7 @@ impl<Ctx: crate::Context> From<Unpacked<u32>> for Decimal<u32, Ctx> {
 
         let mut value: u32 = if unpacked.sign { SIGN_MASK } else { 0 };
         if (unpacked.coefficient & SHORT_COEFF_HIGH_BIT) == SHORT_COEFF_HIGH_BIT {
+            value |= SPECIAL_ENC_MASK;
             value |= unpacked.coefficient & SHORT_COEFF_MASK;
             value |= u32::from(unpacked.exponent) << SHORT_COEFF_SHIFT;
         } else {
@@ -249,7 +250,7 @@ impl<Ctx: crate::Context> Decimal<u32, Ctx> {
         }
 
         if bytes == b"NaN" {
-            return Ok(Self::from_bits(NAN_MASK));
+            return Ok(Self::from_bits(NAN_MASK | sign));
         }
 
         // Drop leading zeroes
@@ -282,7 +283,7 @@ impl<Ctx: crate::Context> Decimal<u32, Ctx> {
 
         let mut coefficient: u32 = 0;
         let mut coeff_digits = 0;
-        while !bytes.is_empty() && (bytes[0] == b'.' || (bytes[0] >= b'0' && bytes[0] <= b'9')) {
+        while !bytes.is_empty() && (bytes[0] == b'.' || bytes[0].is_ascii_digit()) {
             if has_point {
                 if bytes[0] == b'.' {
                     return Err(ParseDecimalError::Invalid);
@@ -326,6 +327,25 @@ impl<Ctx: crate::Context> Decimal<u32, Ctx> {
                 exponent -= 1;
             }
             bytes = &bytes[1..];
+        }
+
+        if !bytes.is_empty() {
+            // FIXME: handle `.e10` invalid case
+            if bytes[0] != b'E' && bytes[0] != b'e' {
+                return Err(ParseDecimalError::ExponentExpected);
+            }
+            bytes = &bytes[1..];
+            let end = bytes
+                .iter()
+                .position(|c| *c != b'-' && *c != b'+' && !c.is_ascii_digit())
+                .unwrap_or_else(|| bytes.len());
+            if end == 0 {
+                return Err(ParseDecimalError::ExponentExpected);
+            }
+            exponent -= std::str::from_utf8(&bytes[..end])
+                .unwrap()
+                .parse::<isize>()
+                .unwrap();
         }
 
         let exponent: isize = (u32::BIAS as isize) - exponent;

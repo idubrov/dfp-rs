@@ -21,6 +21,7 @@ pub use std::num::FpCategory;
 pub enum ParseDecimalError {
     Empty,
     Invalid,
+    ExponentExpected,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

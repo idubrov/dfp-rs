@@ -3,8 +3,8 @@
 #![allow(clippy::unreadable_literal)]
 
 pub mod util;
+use dfp::{d32, d64, d128, FpCategory, Rounding};
 use self::util::Bits;
-use dfp::{d128, d32, d64, FpCategory, Rounding};
 
 #[test]
 #[rustfmt::skip]
@@ -110,35 +110,35 @@ fn bid128_from_string() {
     assert_eq!(Bits(d128::parse_rounding("1.9999999999999999999999999990000004999999999999999", Rounding::Down).unwrap().to_bits()), Bits(d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("1.9999999999999999999999999990000004999999999999999", Rounding::TiesAway).unwrap().to_bits()), Bits(d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("1.9999999999999999999999999990000004999999999999999", Rounding::Zero).unwrap().to_bits()), Bits(d128::from_bits(0x2ffe629b8c891b267182b613fff0bdc0).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("1.1E2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x3042000000000000000000000000000b).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("1.1P2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("1.1EE", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("1.1P-2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("1.1E-2E", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x303a000000000000000000000000000b).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+INF", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("1.1e2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x3042000000000000000000000000000b).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("1.1p2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("1.1ee", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("1.1p-2", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("1.1e-2e", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x303a000000000000000000000000000b).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+nan", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+snan", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+infi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("+INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("INF", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("+infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("nan", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("snan", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("infi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7e000000000000000000000000000000).to_bits()));
     assert_eq!(Bits(d128::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
-    assert_eq!(Bits(d128::parse_rounding("INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x78000000000000000000000000000000).to_bits()));
+    assert_eq!(Bits(d128::parse_rounding("infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d128::from_bits(0x7c000000000000000000000000000000).to_bits()));
 }
 
 #[test]
@@ -377,14 +377,14 @@ fn bid32_from_string() {
     assert_eq!(Bits(d32::parse_rounding("9.999999e96", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x77f8967f).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("-9.999999e96", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0xf7f8967f).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+Inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INF", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("-nan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0xfc000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+SNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("-snan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0xfe000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("-NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0xfc000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("-sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0xfe000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Down).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4241).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Up).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4242).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Zero).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4241).to_bits()));
@@ -421,41 +421,41 @@ fn bid32_from_string() {
     assert_eq!(Bits(d32::parse_rounding("1.0000004999999999999999", Rounding::Down).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4240).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000004999999999999999", Rounding::TiesAway).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4240).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000004999999999999999", Rounding::Zero).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4240).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1.1E2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x3300000b).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1.1P2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1.1EE", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1.1P-2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1.1E-2E", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1.1e2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x3300000b).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1.1p2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1.1ee", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1.1p-2", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1.1e-2e", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4242).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Up).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4242).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::TiesAway).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4242).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Zero).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4241).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("1.0000015", Rounding::Down).unwrap().to_bits()), Bits(d32::from_bits(0x2f8f4241).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INF", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+nan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+snan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+infi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("+INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("INF", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("+infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("nan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("snan", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("infi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7e000000).to_bits()));
     assert_eq!(Bits(d32::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
-    assert_eq!(Bits(d32::parse_rounding("1E-102", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x00000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x78000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x7c000000).to_bits()));
+    assert_eq!(Bits(d32::parse_rounding("1e-102", Rounding::Nearest).unwrap().to_bits()), Bits(d32::from_bits(0x00000000).to_bits()));
 }
 
 #[test]
@@ -635,9 +635,9 @@ fn bid64_class() {
 #[test]
 #[rustfmt::skip]
 fn bid64_from_string() {
-    assert_eq!(Bits(d64::parse_rounding("+Inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+SNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("-9.9999999999999995", Rounding::Up).unwrap().to_bits()), Bits(d64::from_bits(0xebfb86f26fc0ffff).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("-9.9999999999999995", Rounding::Down).unwrap().to_bits()), Bits(d64::from_bits(0xb0038d7ea4c68000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("9.9999999999999995", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x30038d7ea4c68000).to_bits()));
@@ -671,35 +671,35 @@ fn bid64_from_string() {
     assert_eq!(Bits(d64::parse_rounding("1.0000000000000004999999999999999", Rounding::Down).unwrap().to_bits()), Bits(d64::from_bits(0x2fe38d7ea4c68000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("1.0000000000000004999999999999999", Rounding::TiesAway).unwrap().to_bits()), Bits(d64::from_bits(0x2fe38d7ea4c68000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("1.0000000000000004999999999999999", Rounding::Zero).unwrap().to_bits()), Bits(d64::from_bits(0x2fe38d7ea4c68000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("1.1E2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x31e000000000000b).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("1.1P2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("1.1EE", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("1.1P-2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("1.1E-2E", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+INF", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("1.1e2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x31e000000000000b).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("1.1p2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("1.1ee", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("1.1p-2", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("1.1e-2e", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+nan", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+snan", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+infi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("+INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("INF", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("INFi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("NAN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("SNAN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("SNANi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("+infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("nan", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("snan", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("INFINITY", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("infi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("sNaNi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("inf", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("NaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("sNaN", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7e00000000000000).to_bits()));
     assert_eq!(Bits(d64::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("INFiNITY", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
-    assert_eq!(Bits(d64::parse_rounding("INFINITYi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("infinity", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7800000000000000).to_bits()));
+    assert_eq!(Bits(d64::parse_rounding("infinityi", Rounding::Nearest).unwrap().to_bits()), Bits(d64::from_bits(0x7c00000000000000).to_bits()));
 }
 
 #[test]

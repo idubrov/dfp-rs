@@ -6,6 +6,11 @@ struct Parser<'a> {
     input: &'a str,
 }
 
+fn interpret_special(s: &str) -> String {
+    // FIXME: test we handle both 1.0e+1 and 1.0E+1
+    s.to_lowercase().replace("nan", "NaN")
+}
+
 impl<'a> Parser<'a> {
     fn new(input: &'a str) -> Self {
         Parser { input }
@@ -47,7 +52,7 @@ impl<'a> Parser<'a> {
             let value = &value[1..value.len() - 1].replace(',', "");
             Representation::Bits(value.into())
         } else {
-            Representation::Str(value.into())
+            Representation::Str(interpret_special(value))
         };
 
         DecimalArg {
@@ -193,7 +198,7 @@ impl ParseOp {
     fn parse(parser: &mut Parser, format: Format) -> TestCaseKind {
         TestCaseKind::Parse(ParseOp {
             rounding: parser.parse_rounding(),
-            arg0: parser.parse_str().to_owned(),
+            arg0: interpret_special(parser.parse_str()),
             result: parser.parse_value(format),
         })
     }
