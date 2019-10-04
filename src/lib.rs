@@ -17,11 +17,29 @@ mod tests;
 use std::marker::PhantomData;
 pub use std::num::FpCategory;
 
-#[derive(Debug)]
-pub enum ParseDecimalError {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseDecimalError {
+    kind: DecimalErrorKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DecimalErrorKind {
     Empty,
     Invalid,
-    ExponentExpected,
+}
+
+impl ParseDecimalError {
+    pub(crate) fn empty() -> ParseDecimalError {
+        ParseDecimalError {
+            kind: DecimalErrorKind::Empty,
+        }
+    }
+
+    pub(crate) fn invalid() -> ParseDecimalError {
+        ParseDecimalError {
+            kind: DecimalErrorKind::Invalid,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

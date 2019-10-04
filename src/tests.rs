@@ -1,6 +1,6 @@
 use super::FpCategory;
 use crate::consts::DecimalProps;
-use crate::{d32, Decimal, Rounding, Unpacked};
+use crate::*;
 
 #[test]
 fn it_works() {
@@ -9,6 +9,30 @@ fn it_works() {
     //    let expected = d32::from_bits(0x6018967f);
     //    let unpacked: crate::Unpacked<_> = expected.into();
     //    eprintln!("{:?}", unpacked);
-    let actual = d32::parse_rounding("+Inf", Rounding::Nearest).unwrap();
-    eprintln!("{:?}", actual.unpack());
+
+//    let expected = d128::from_bits(0x303a000000000000000000000000000b);
+//    eprintln!("{:?}", expected.unpack());
+
+    let actual = d32::parse_rounding("25e-102", Rounding::Nearest).unwrap();
+    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+
+    let actual = d32::parse_rounding("251e-103", Rounding::Nearest).unwrap();
+    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+
+//    let actual = d32::parse_rounding("9e-102", Rounding::Down).unwrap();
+//    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+//    let actual = d32::parse_rounding("-9e-102", Rounding::Down).unwrap();
+//    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+//    let actual = d32::parse_rounding("-4e-102", Rounding::Down).unwrap();
+//    eprintln!("{:x} => {:?} {}", actual.to_bits(), actual.unpack());
+
+
+//    let actual = d32::parse_rounding("9e-102", Rounding::Up).unwrap();
+//    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+
+//    let actual = d32::parse_rounding("9e-102", Rounding::Zero).unwrap();
+//    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+//
+//    let actual = d32::parse_rounding("9e-102", Rounding::TiesAway).unwrap();
+//    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
 }

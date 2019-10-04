@@ -8,7 +8,7 @@ struct Parser<'a> {
 
 fn interpret_special(s: &str) -> String {
     // FIXME: test we handle both 1.0e+1 and 1.0E+1
-    s.to_lowercase().replace("nan", "NaN")
+    s.to_lowercase().replace("nan", "NaN").replace("NaNi", "NaN").replace("infinity", "inf")
 }
 
 impl<'a> Parser<'a> {
@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_value(&mut self, format: Format) -> DecimalArg {
+    fn parse_value(&mut self, format: DecimalType) -> DecimalArg {
         let value = self.parse_str();
         let representation = if value.starts_with('[') && value.ends_with(']') {
             let value = &value[1..value.len() - 1].replace(',', "");
@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
         };
 
         DecimalArg {
-            format,
+            dec_type: format,
             representation,
         }
     }
@@ -72,47 +72,54 @@ impl<'a> Parser<'a> {
     }
 
     // FIXME: support sign, too?
-    fn parse_category(&mut self) -> FpCategory {
+    /// Parse number category and sign; `true` is positive.
+    fn parse_category_sign(&mut self) -> (FpCategory, bool) {
         match self.parse_str() {
-            "0" | "1" => FpCategory::Nan,
-            "2" | "9" => FpCategory::Infinite,
-            "3" | "8" => FpCategory::Normal,
-            "4" | "7" => FpCategory::Subnormal,
-            "5" | "6" => FpCategory::Zero,
+            // Negative NaN is signaling NaN
+            "0" => (FpCategory::Nan, false),
+            "1" => (FpCategory::Nan, true),
+            "2" => (FpCategory::Infinite, false),
+            "3" => (FpCategory::Normal, false),
+            "4" => (FpCategory::Subnormal, false),
+            "5" => (FpCategory::Zero, false),
+            "6" => (FpCategory::Zero, true),
+            "7" => (FpCategory::Subnormal, true),
+            "8" => (FpCategory::Normal, true),
+            "9" => (FpCategory::Infinite, true),
             other => panic!("Invalid category: '{}'", other),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Format {
+pub enum DecimalType {
     Decimal32,
     Decimal64,
     Decimal128,
 }
 
-impl fmt::Display for Format {
+impl fmt::Display for DecimalType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Format::Decimal32 => f.write_str("d32"),
-            Format::Decimal64 => f.write_str("d64"),
-            Format::Decimal128 => f.write_str("d128"),
+            DecimalType::Decimal32 => f.write_str("d32"),
+            DecimalType::Decimal64 => f.write_str("d64"),
+            DecimalType::Decimal128 => f.write_str("d128"),
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct DecimalArg {
-    pub format: Format,
+    pub dec_type: DecimalType,
     pub representation: Representation,
 }
 
 impl fmt::Display for DecimalArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.representation {
-            Representation::Bits(ref bits) => write!(f, "{}::from_bits(0x{})", self.format, bits),
+            Representation::Bits(ref bits) => write!(f, "{}::from_bits(0x{})", self.dec_type, bits),
             Representation::Str(ref s) => {
-                write!(f, "\"{}\".parse::<{}>().unwrap()", s, self.format)
+                write!(f, "\"{}\".parse::<{}>().unwrap()", s, self.dec_type)
             }
         }
     }
@@ -139,7 +146,7 @@ impl fmt::Display for BoolOp {
 }
 
 impl BoolOp {
-    fn parse(parser: &mut Parser, format: Format, op: &'static str) -> TestCaseKind {
+    fn parse(parser: &mut Parser, format: DecimalType, op: &'static str) -> TestCaseKind {
         let _rounding = parser.parse_rounding();
         TestCaseKind::Bool(BoolOp {
             op,
@@ -167,7 +174,7 @@ impl fmt::Display for UnaryOp {
 }
 
 impl UnaryOp {
-    fn parse(parser: &mut Parser, format: Format, op: &'static str) -> TestCaseKind {
+    fn parse(parser: &mut Parser, format: DecimalType, op: &'static str) -> TestCaseKind {
         let _rounding = parser.parse_rounding();
         TestCaseKind::Unary(UnaryOp {
             op,
@@ -188,14 +195,14 @@ impl fmt::Display for ParseOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "assert_eq!(Bits({}::parse_rounding(\"{}\", Rounding::{:?}).unwrap().to_bits()), Bits({}.to_bits()));",
-            self.result.format, self.arg0, self.rounding, self.result
+            "assert_eq!(Bits({}::parse_rounding(\"{}\", Rounding::{:?}).unwrap_or({}::NAN).to_bits()), Bits({}.to_bits()));",
+            self.result.dec_type, self.arg0, self.rounding, self.result.dec_type, self.result
         )
     }
 }
 
 impl ParseOp {
-    fn parse(parser: &mut Parser, format: Format) -> TestCaseKind {
+    fn parse(parser: &mut Parser, format: DecimalType) -> TestCaseKind {
         TestCaseKind::Parse(ParseOp {
             rounding: parser.parse_rounding(),
             arg0: interpret_special(parser.parse_str()),
@@ -208,25 +215,41 @@ impl ParseOp {
 pub struct ClassifyOp {
     pub value: DecimalArg,
     pub category: FpCategory,
+    pub is_positive: bool,
 }
 
 impl fmt::Display for ClassifyOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
+        writeln!(
             f,
             "assert_eq!({}.classify(), FpCategory::{:?});",
             self.value, self.category
-        )
+        )?;
+        if self.category == FpCategory::Nan {
+            if self.is_positive {
+                write!(f, "    assert!(!{}.is_snan());", self.value)
+            } else {
+                write!(f, "    assert!({}.is_snan());", self.value)
+            }
+        } else if self.is_positive {
+            write!(f, "    assert!({}.is_sign_positive());", self.value)
+        } else {
+            write!(f, "    assert!({}.is_sign_negative());", self.value)
+        }
+
         // FIXME: sign!
     }
 }
 
 impl ClassifyOp {
-    fn parse(parser: &mut Parser, format: Format) -> TestCaseKind {
+    fn parse(parser: &mut Parser, format: DecimalType) -> TestCaseKind {
         let _rounding = parser.parse_rounding();
+        let value = parser.parse_value(format);
+        let (category, is_positive) = parser.parse_category_sign();
         TestCaseKind::Classify(ClassifyOp {
-            value: parser.parse_value(format),
-            category: parser.parse_category(),
+            value,
+            category,
+            is_positive,
         })
     }
 }
@@ -253,41 +276,41 @@ impl FromStr for TestCase {
         let parser = &mut Parser::new(s);
         let op = parser.parse_str().to_owned();
         let case = match op.as_str() {
-            "bid32_isNaN" => BoolOp::parse(parser, Format::Decimal32, "is_nan"),
-            "bid64_isNaN" => BoolOp::parse(parser, Format::Decimal64, "is_nan"),
-            "bid128_isNaN" => BoolOp::parse(parser, Format::Decimal128, "is_nan"),
+            "bid32_isNaN" => BoolOp::parse(parser, DecimalType::Decimal32, "is_nan"),
+            "bid64_isNaN" => BoolOp::parse(parser, DecimalType::Decimal64, "is_nan"),
+            "bid128_isNaN" => BoolOp::parse(parser, DecimalType::Decimal128, "is_nan"),
 
-            "bid32_isInf" => BoolOp::parse(parser, Format::Decimal32, "is_infinite"),
-            "bid64_isInf" => BoolOp::parse(parser, Format::Decimal64, "is_infinite"),
-            "bid128_isInf" => BoolOp::parse(parser, Format::Decimal128, "is_infinite"),
+            "bid32_isInf" => BoolOp::parse(parser, DecimalType::Decimal32, "is_infinite"),
+            "bid64_isInf" => BoolOp::parse(parser, DecimalType::Decimal64, "is_infinite"),
+            "bid128_isInf" => BoolOp::parse(parser, DecimalType::Decimal128, "is_infinite"),
 
-            "bid32_isFinite" => BoolOp::parse(parser, Format::Decimal32, "is_finite"),
-            "bid64_isFinite" => BoolOp::parse(parser, Format::Decimal64, "is_finite"),
-            "bid128_isFinite" => BoolOp::parse(parser, Format::Decimal128, "is_finite"),
+            "bid32_isFinite" => BoolOp::parse(parser, DecimalType::Decimal32, "is_finite"),
+            "bid64_isFinite" => BoolOp::parse(parser, DecimalType::Decimal64, "is_finite"),
+            "bid128_isFinite" => BoolOp::parse(parser, DecimalType::Decimal128, "is_finite"),
 
-            "bid32_isNormal" => BoolOp::parse(parser, Format::Decimal32, "is_normal"),
-            "bid64_isNormal" => BoolOp::parse(parser, Format::Decimal64, "is_normal"),
-            "bid128_isNormal" => BoolOp::parse(parser, Format::Decimal128, "is_normal"),
+            "bid32_isNormal" => BoolOp::parse(parser, DecimalType::Decimal32, "is_normal"),
+            "bid64_isNormal" => BoolOp::parse(parser, DecimalType::Decimal64, "is_normal"),
+            "bid128_isNormal" => BoolOp::parse(parser, DecimalType::Decimal128, "is_normal"),
 
-            "bid32_isSubnormal" => BoolOp::parse(parser, Format::Decimal32, "is_subnormal"),
-            "bid64_isSubnormal" => BoolOp::parse(parser, Format::Decimal64, "is_subnormal"),
-            "bid128_isSubnormal" => BoolOp::parse(parser, Format::Decimal128, "is_subnormal"),
+            "bid32_isSubnormal" => BoolOp::parse(parser, DecimalType::Decimal32, "is_subnormal"),
+            "bid64_isSubnormal" => BoolOp::parse(parser, DecimalType::Decimal64, "is_subnormal"),
+            "bid128_isSubnormal" => BoolOp::parse(parser, DecimalType::Decimal128, "is_subnormal"),
 
-            "bid32_isSigned" => BoolOp::parse(parser, Format::Decimal32, "is_sign_negative"),
-            "bid64_isSigned" => BoolOp::parse(parser, Format::Decimal64, "is_sign_negative"),
-            "bid128_isSigned" => BoolOp::parse(parser, Format::Decimal128, "is_sign_negative"),
+            "bid32_isSigned" => BoolOp::parse(parser, DecimalType::Decimal32, "is_sign_negative"),
+            "bid64_isSigned" => BoolOp::parse(parser, DecimalType::Decimal64, "is_sign_negative"),
+            "bid128_isSigned" => BoolOp::parse(parser, DecimalType::Decimal128, "is_sign_negative"),
 
-            "bid32_class" => ClassifyOp::parse(parser, Format::Decimal32),
-            "bid64_class" => ClassifyOp::parse(parser, Format::Decimal64),
-            "bid128_class" => ClassifyOp::parse(parser, Format::Decimal128),
+            "bid32_class" => ClassifyOp::parse(parser, DecimalType::Decimal32),
+            "bid64_class" => ClassifyOp::parse(parser, DecimalType::Decimal64),
+            "bid128_class" => ClassifyOp::parse(parser, DecimalType::Decimal128),
 
-            "bid32_abs" => UnaryOp::parse(parser, Format::Decimal32, "abs"),
-            "bid64_abs" => UnaryOp::parse(parser, Format::Decimal64, "abs"),
-            "bid128_abs" => UnaryOp::parse(parser, Format::Decimal128, "abs"),
+            "bid32_abs" => UnaryOp::parse(parser, DecimalType::Decimal32, "abs"),
+            "bid64_abs" => UnaryOp::parse(parser, DecimalType::Decimal64, "abs"),
+            "bid128_abs" => UnaryOp::parse(parser, DecimalType::Decimal128, "abs"),
 
-            "bid32_from_string" => ParseOp::parse(parser, Format::Decimal32),
-            "bid64_from_string" => ParseOp::parse(parser, Format::Decimal64),
-            "bid128_from_string" => ParseOp::parse(parser, Format::Decimal128),
+            "bid32_from_string" => ParseOp::parse(parser, DecimalType::Decimal32),
+            "bid64_from_string" => ParseOp::parse(parser, DecimalType::Decimal64),
+            "bid128_from_string" => ParseOp::parse(parser, DecimalType::Decimal128),
 
             _ => {
                 return Ok(TestCase {

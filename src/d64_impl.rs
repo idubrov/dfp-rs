@@ -4,6 +4,7 @@ use crate::{Decimal, FpCategory, ParseDecimalError, Rounding, Unpacked};
 use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
+use crate::consts::factors;
 
 const SIGN_MASK: u64 = 0b1000_0000 << (u64::BITS - 8);
 
@@ -12,6 +13,7 @@ const SIGN_MASK: u64 = 0b1000_0000 << (u64::BITS - 8);
 const SPECIAL_ENC_MASK: u64 = 0b0110_0000 << (u64::BITS - 8);
 const INFINITY_MASK: u64 = 0b0111_1000 << (u64::BITS - 8);
 const NAN_MASK: u64 = 0b0111_1100 << (u64::BITS - 8);
+const SIGNALING_NAN_MASK: u64 = 0b0000_0010 << (u64::BITS - 8);
 /// Add 2 -- two bits in front of the exponent bits are also part of the exponent, as long as they
 /// are not `11`.
 const EXPONENT_MASK: u64 = (1 << (u64::EXPONENT_BITS + 2)) - 1;
@@ -96,9 +98,23 @@ impl<Ctx: crate::Context> From<Unpacked<u64>> for Decimal<u64, Ctx> {
 }
 
 impl<Ctx: crate::Context> Decimal<u64, Ctx> {
-    /// Returns `true` if this value is `NaN` and `false` otherwise.
+    /// Positive `NaN` constant (not a number)
+    pub const NAN: Self = Decimal(NAN_MASK, PhantomData);
+
+    /// Positive infinity constant
+    pub const INFINITY: Self = Decimal(INFINITY_MASK, PhantomData);
+
+    /// Negative infinity constant
+    pub const NEG_INFINITY: Self = Decimal(INFINITY_MASK | SIGN_MASK, PhantomData);
+
+    /// Returns `true` if this value is `NaN` or `sNaN` and `false` otherwise.
     pub fn is_nan(&self) -> bool {
         (self.0 & NAN_MASK) == NAN_MASK
+    }
+
+    /// Returns `true` if this value is `sNaN` and `false` otherwise.
+    pub fn is_snan(&self) -> bool {
+        self.is_nan() && (self.0 & SIGNALING_NAN_MASK) == SIGNALING_NAN_MASK
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity and `false`
@@ -234,7 +250,7 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
         let mut sign: u64 = 0;
 
         if bytes.is_empty() {
-            return Err(ParseDecimalError::Empty);
+            return Err(ParseDecimalError::empty());
         }
         if bytes.first() == Some(&b'-') {
             sign = SIGN_MASK;
@@ -243,7 +259,7 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
             bytes = &bytes[1..];
         };
         if bytes.is_empty() {
-            return Err(ParseDecimalError::Invalid);
+            return Err(ParseDecimalError::invalid());
         }
 
         if bytes == b"inf" {
@@ -252,6 +268,10 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
 
         if bytes == b"NaN" {
             return Ok(Self::from_bits(NAN_MASK | sign));
+        }
+
+        if bytes == b"sNaN" {
+            return Ok(Self::from_bits(NAN_MASK | sign | SIGNALING_NAN_MASK));
         }
 
         // Drop leading zeroes
@@ -287,7 +307,7 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
         while !bytes.is_empty() && (bytes[0] == b'.' || bytes[0].is_ascii_digit()) {
             if has_point {
                 if bytes[0] == b'.' {
-                    return Err(ParseDecimalError::Invalid);
+                    return Err(ParseDecimalError::invalid());
                 }
                 exponent += 1;
             } else if bytes[0] == b'.' {
@@ -305,15 +325,17 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
                 // We are at the first digit that will be rounded off
                 let round_up = match rounding {
                     Rounding::Nearest if digit == 5 => {
+                        // FIXME: invalid! should look ahead for first non-zero!
                         let ahead = bytes.get(1).cloned().unwrap_or(b'0');
-                        let is_odd = (coefficient % 2) == 1;
-                        is_odd || ahead > b'0' && ahead <= b'9'
+                        is_odd(coefficient) || ahead > b'0' && ahead <= b'9'
                     }
                     Rounding::Nearest => digit > 5,
+                    // FIXME: should check that remaining digits are non-zero!
                     Rounding::Down => sign != 0,
+                    // FIXME: should check that remaining digits are non-zero!
                     Rounding::Up => sign == 0,
-                    Rounding::TiesAway => digit >= 5,
                     Rounding::Zero => false,
+                    Rounding::TiesAway => digit >= 5,
                 };
                 if round_up {
                     coefficient += 1;
@@ -333,7 +355,7 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
         if !bytes.is_empty() {
             // FIXME: handle `.e10` invalid case
             if bytes[0] != b'E' && bytes[0] != b'e' {
-                return Err(ParseDecimalError::ExponentExpected);
+                return Err(ParseDecimalError::invalid());
             }
             bytes = &bytes[1..];
             let end = bytes
@@ -341,25 +363,60 @@ impl<Ctx: crate::Context> Decimal<u64, Ctx> {
                 .position(|c| *c != b'-' && *c != b'+' && !c.is_ascii_digit())
                 .unwrap_or_else(|| bytes.len());
             if end == 0 {
-                return Err(ParseDecimalError::ExponentExpected);
+                return Err(ParseDecimalError::invalid());
             }
             exponent -= std::str::from_utf8(&bytes[..end])
                 .unwrap()
                 .parse::<isize>()
                 .unwrap();
+            bytes = &bytes[end..];
         }
 
-        let exponent: isize = (u64::BIAS as isize) - exponent;
-        assert!(
-            exponent < (0b11 << u64::EXPONENT_BITS),
-            "FIXME: exponent is too large"
-        );
+        if !bytes.is_empty() {
+            return Err(ParseDecimalError::invalid());
+        }
+
+        let mut exponent: isize = (u64::BIAS as isize) - exponent;
+
+        // Bring exponent into proper range by scaling the coefficient
+        if exponent < 0 {
+            let exp = (-exponent) as usize;
+            if exp < factors::u64.len() {
+                scale_coefficient(sign != 0, &mut coefficient, exp, rounding);
+            } else {
+                coefficient = 0;
+            }
+            exponent = 0;
+        }
+        if exponent < 0 || exponent >= (0b11 << u64::EXPONENT_BITS) {
+            panic!("need to re-scale the number to make the exponent to fit?");
+        }
         let unpacked = Unpacked {
             coefficient,
             exponent: exponent as u16,
             sign: sign != 0,
         };
         Ok(unpacked.into())
+    }
+}
+
+fn is_odd(value: u64) -> bool {
+    value % 2 == 1
+}
+
+fn scale_coefficient(is_negative: bool, coefficient: &mut u64, factor: usize, rounding: Rounding) {
+    let remainder = *coefficient % factors::u64[factor];
+    let half = factors::u64[factor] / 2;
+    *coefficient /= factors::u64[factor];
+    let round_up = match rounding {
+        Rounding::Nearest => remainder > half || (remainder == half && is_odd(*coefficient)),
+        Rounding::Down => is_negative && remainder >= half,
+        Rounding::Up => !is_negative && remainder >= half,
+        Rounding::Zero => false,
+        Rounding::TiesAway => remainder >= half,
+    };
+    if round_up {
+        *coefficient += 1;
     }
 }
 
