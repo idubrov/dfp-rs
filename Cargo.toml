@@ -1,0 +1,17 @@
+[package]
+name = "dfp"
+version = "0.2.0"
+authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
+repository = "https://github.com/idubrov/dfp-rs"
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[badges]
+circle-ci = { repository = "idubrov/dfp-rs" }
+codecov = { repository = "idubrov/dfp-rs" }
+is-it-maintained-issue-resolution = { repository = "idubrov/dfp-rs" }
+is-it-maintained-open-issues = { repository = "idubrov/dfp-rs" }
+maintenance = { status = "experimental" }
+
+[workspace]
+members = ["tool"]
