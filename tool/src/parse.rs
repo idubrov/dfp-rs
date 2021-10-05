@@ -14,7 +14,6 @@ fn interpret_special(s: &str) -> String {
         .replace("infinity", "inf")
 }
 
-
 fn rounding_context(rounding: Rounding) -> &'static str {
     match rounding {
         Rounding::Nearest => "NearestRoundingContext",
@@ -134,14 +133,22 @@ impl fmt::Display for DecimalArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ctx = rounding_context(self.rounding);
         match self.representation {
-            Representation::Bits(ref bits) => write!(f, "Decimal::<{}, {}>::from_bits(0x{})", self.dec_type, ctx, bits),
+            Representation::Bits(ref bits) => write!(
+                f,
+                "Decimal::<{}, {}>::from_bits(0x{})",
+                self.dec_type, ctx, bits
+            ),
             Representation::Str(ref s) => {
                 // Note: arguments are always parsed with `Nearest` rounding!
                 // Would be great if all tests were only using bits as an input, for robustness,
                 // but they do use string parsing a lot. And some of the test cases are actually
                 // exercising rounding immediately during the parsing. What is more, it seems like
                 // it doesn't use test case rounding, but seems to be always using `Nearest`.
-                write!(f, "Decimal::<{}, {}>::parse_rounding(\"{}\", Rounding::Nearest).unwrap()", self.dec_type, ctx, s)
+                write!(
+                    f,
+                    "Decimal::<{}, {}>::parse_rounding(\"{}\", Rounding::Nearest).unwrap()",
+                    self.dec_type, ctx, s
+                )
             }
         }
     }
@@ -367,7 +374,6 @@ impl FromStr for TestCase {
             "bid64_from_string" => ParseOp::parse(parser, DecimalType::Decimal64),
             "bid128_from_string" => ParseOp::parse(parser, DecimalType::Decimal128),
 
-
             "bid32_add" => BinaryOp::parse(parser, DecimalType::Decimal32, "add"),
             "bid64_add" => BinaryOp::parse(parser, DecimalType::Decimal64, "add"),
             "bid128_add" => BinaryOp::parse(parser, DecimalType::Decimal128, "add"),
@@ -378,12 +384,16 @@ impl FromStr for TestCase {
                     op,
                     kind: TestCaseKind::Unsupported,
                     status: Status::from_bits(0),
-                })
+                });
             }
         };
 
         let status = parser.parse_status();
-        Ok(TestCase { op, status, kind: case })
+        Ok(TestCase {
+            op,
+            status,
+            kind: case,
+        })
     }
 }
 

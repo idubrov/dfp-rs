@@ -3,8 +3,11 @@
 #![allow(clippy::unreadable_literal)]
 
 pub mod util;
-use dfp::{FpCategory, Decimal, Rounding, NearestRoundingContext, DownRoundingContext, UpRoundingContext, ZeroRoundingContext, TiesAwayRoundingContext};
 use self::util::Bits;
+use dfp::{
+    Decimal, DownRoundingContext, FpCategory, NearestRoundingContext, Rounding,
+    TiesAwayRoundingContext, UpRoundingContext, ZeroRoundingContext,
+};
 use std::ops::Add;
 
 #[test]

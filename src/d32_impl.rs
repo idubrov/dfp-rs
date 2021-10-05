@@ -16,6 +16,7 @@ const SIGNALING_NAN_MASK: u32 = 0b0000_0010 << (u32::BITS - 8);
 /// Add 2 -- two bits in front of the exponent bits are also part of the exponent, as long as they
 /// are not `11`.
 const EXPONENT_MASK: u32 = (1 << (u32::EXPONENT_BITS + 2)) - 1;
+// FIXME: make u16?
 const EXPONENT_MAX: isize = (0b11 << u32::EXPONENT_BITS) - 1;
 
 // If the most significant 4 bits of the significand are between 0 and 7, the encoded value
@@ -48,13 +49,53 @@ impl<Ctx: crate::Context> fmt::Debug for Decimal<u32, Ctx> {
 impl Unpacked<u32> {
     pub(crate) fn pack_with_rounding<Ctx: crate::Context>(mut self) -> Decimal<u32, Ctx> {
         // FIXME: incorrect rounding...
-        while self.coefficient >= u32::MAXIMUM_COEFFICIENT {
+        if self.coefficient >= u32::MAXIMUM_COEFFICIENT * 100 {
+            let digit = self.coefficient % 1000;
+            self.coefficient /= 1000;
+            let round_up = match Ctx::rounding() {
+                Rounding::Nearest if digit == 500 => is_odd(self.coefficient),
+                Rounding::Nearest => digit > 500,
+                Rounding::Down => digit != 0 && self.sign,
+                Rounding::Up => digit != 0 && !self.sign,
+                Rounding::Zero => false,
+                Rounding::TiesAway => digit >= 500,
+            };
+            if round_up {
+                self.coefficient += 1;
+            }
+            self.exponent += 3;
+            if self.coefficient == u32::MAXIMUM_COEFFICIENT {
+                // Essentially, divide coefficient by 10 -- it's too big now!
+                self.coefficient = u32::FACTORS[usize::from(u32::COEFFICIENT_SIZE) - 1];
+                self.exponent += 1;
+            }
+        } else if self.coefficient >= u32::MAXIMUM_COEFFICIENT * 10 {
+            let digit = self.coefficient % 100;
+            self.coefficient /= 100;
+            let round_up = match Ctx::rounding() {
+                Rounding::Nearest if digit == 50 => is_odd(self.coefficient),
+                Rounding::Nearest => digit > 50,
+                Rounding::Down => digit != 0 && self.sign,
+                Rounding::Up => digit != 0 && !self.sign,
+                Rounding::Zero => false,
+                Rounding::TiesAway => digit >= 50,
+            };
+            if round_up {
+                self.coefficient += 1;
+            }
+            self.exponent += 2;
+            if self.coefficient == u32::MAXIMUM_COEFFICIENT {
+                // Essentially, divide coefficient by 10 -- it's too big now!
+                self.coefficient = u32::FACTORS[usize::from(u32::COEFFICIENT_SIZE) - 1];
+                self.exponent += 1;
+            }
+        } else if self.coefficient >= u32::MAXIMUM_COEFFICIENT {
             let digit = self.coefficient % 10;
             self.coefficient /= 10;
             let round_up = match Ctx::rounding() {
                 Rounding::Nearest if digit == 5 => is_odd(self.coefficient),
                 Rounding::Nearest => digit > 5,
-                Rounding::Down  => digit != 0 && self.sign,
+                Rounding::Down => digit != 0 && self.sign,
                 Rounding::Up => digit != 0 && !self.sign,
                 Rounding::Zero => false,
                 Rounding::TiesAway => digit >= 5,
@@ -71,7 +112,29 @@ impl Unpacked<u32> {
         }
         // Round to infinity, value is too large
         if self.exponent as isize > EXPONENT_MAX {
-            return infinity(self.sign);
+            let rounding = Ctx::rounding();
+            if rounding == Rounding::Zero
+                || (rounding == Rounding::Down && !self.sign)
+                || (rounding == Rounding::Up && self.sign)
+            {
+                self.coefficient = u32::MAXIMUM_COEFFICIENT - 1;
+                self.exponent = EXPONENT_MAX as u16;
+            } else {
+                return infinity(self.sign);
+            }
+        }
+        // Round to infinity, value is too large
+        if self.exponent as isize > EXPONENT_MAX {
+            let rounding = Ctx::rounding();
+            if rounding == Rounding::Zero
+                || (rounding == Rounding::Down && !self.sign)
+                || (rounding == Rounding::Up && self.sign)
+            {
+                self.coefficient = u32::MAXIMUM_COEFFICIENT - 1;
+                self.exponent = EXPONENT_MAX as u16;
+            } else {
+                return infinity(self.sign);
+            }
         }
         self.pack()
     }
@@ -617,7 +680,7 @@ impl<Ctx: crate::Context> Add for Decimal<u32, Ctx> {
         } else if diff_exp != 0 {
             let tie = b.coefficient % u32::FACTORS[usize::from(diff_exp)];
             b.coefficient /= u32::FACTORS[usize::from(diff_exp)];
-            if b.coefficient % 10 == 5 && tie > 0 {
+            if b.coefficient % 5 == 0 && tie > 0 {
                 // round up, to remove tie break
                 b.coefficient += 1;
             }
