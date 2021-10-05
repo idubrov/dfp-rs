@@ -171,9 +171,10 @@ pub type d64 = Decimal<u64, NearestRoundingContext>;
 /// A 128-bit decimal floating point type, as specified by IEEE 754-2008.
 pub type d128 = Decimal<u128, NearestRoundingContext>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct Unpacked<T> {
     coefficient: T,
     exponent: u16,
+    /// `true` if number is negative
     sign: bool,
 }

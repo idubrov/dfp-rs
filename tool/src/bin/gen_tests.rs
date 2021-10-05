@@ -38,8 +38,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     writeln!(out, "#![allow(clippy::unreadable_literal)]")?;
     writeln!(out)?;
     writeln!(out, "pub mod util;")?;
-    writeln!(out, "use dfp::{{d32, d64, d128, FpCategory, Rounding}};")?;
+    writeln!(out, "use dfp::{{FpCategory, Decimal, Rounding, NearestRoundingContext, DownRoundingContext, UpRoundingContext, ZeroRoundingContext, TiesAwayRoundingContext}};")?;
     writeln!(out, "use self::util::Bits;")?;
+    writeln!(out, "use std::ops::Add;")?;
 
     for (key, cases) in cases {
         writeln!(out)?;

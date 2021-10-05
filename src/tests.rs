@@ -3,42 +3,34 @@ use super::FpCategory;
 use crate::consts::DecimalProps;
 use crate::*;
 
+type d32_down = Decimal<u32, DownRoundingContext>;
+
 #[test]
 fn it_works() {
-    //    //bid128_from_string 2 -9.9999999999999999999999999999999995 [afffed09bead87c0378d8e63ffffffff] 20
-    //    use crate::d32;
-    //    let expected = d32::from_bits(0x6018967f);
-    //    let unpacked: crate::Unpacked<_> = expected.into();
-    //    eprintln!("{:?}", unpacked);
+    //assert_eq!(Bits(d32::<NearestRoundingContext>::from_bits(0x1f800000).add(d32::<NearestRoundingContext>::from_bits(0x9b800000)).to_bits()), Bits(d32::<NearestRoundingContext>::from_bits(0x1b800000).to_bits()));
+    // let x: d32 = d32::from_bits(0x1f800000);
+    // let y: d32 = d32::from_bits(0x9b800000);
+    // let z: d32 = d32::from_bits(0x1b800000);
+    // eprintln!("{:?} x", x.unpack());
+    // eprintln!("{:?} y", y.unpack());
+    // eprintln!("{:?} (x + y)", (x + y).unpack());
+    // eprintln!("{:?} expected", z.unpack());
 
-    //    let expected = d128::from_bits(0x303a000000000000000000000000000b);
-    //    eprintln!("{:?}", expected.unpack());
 
-    //assert_eq!(Bits(.unwrap_or(d128::NAN).to_bits()), Bits(d128::from_bits(0x303a000000000000000000000000000b).to_bits()));
-    let expected = d128::from_bits(0x303a000000000000000000000000000b);
-    eprintln!("{:?}", expected.unpack());
-    let actual = d128::parse_rounding("1.1e-2e", Rounding::Nearest).unwrap();
-    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+    //assert_eq!(Bits(Decimal::<u64, DownRoundingContext>::from_bits(0x5ffffbfff34ffeb7).add(Decimal::<u64, DownRoundingContext>::from_bits(0x5ffffff5efffef7f)).to_bits()), Bits(Decimal::<u64, DownRoundingContext>::from_bits(0x77fb86f26fc0ffff).to_bits()));
+    //let x = Decimal::<u64, DownRoundingContext>::parse_rounding("-1110100.00110000101e267", Rounding::Nearest).unwrap();
+    //let y = Decimal::<u64, DownRoundingContext>::parse_rounding("+1001.00e-249", Rounding::Nearest).unwrap();
+    let x = Decimal::<u64, DownRoundingContext>::from_bits(0x5ffffbfff34ffeb7);
+    let y = Decimal::<u64, DownRoundingContext>::from_bits(0x5ffffff5efffef7f);
+    let z = Decimal::<u64, DownRoundingContext>::from_bits(0x77fb86f26fc0ffff);
 
-    // let actual = d32::parse_rounding("25e-102", Rounding::Nearest).unwrap();
-    // eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
-    //
-    // let actual = d32::parse_rounding("251e-103", Rounding::Nearest).unwrap();
-    // eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+    eprintln!("{:?} x", x.unpack());
+    eprintln!("{:?} y", y.unpack());
+    //eprintln!("{:?} (x + y)", (x + y).unpack());
+    eprintln!("{:?} expected", z.unpack());
 
-    //    let actual = d32::parse_rounding("9e-102", Rounding::Down).unwrap();
-    //    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
-    //    let actual = d32::parse_rounding("-9e-102", Rounding::Down).unwrap();
-    //    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
-    //    let actual = d32::parse_rounding("-4e-102", Rounding::Down).unwrap();
-    //    eprintln!("{:x} => {:?} {}", actual.to_bits(), actual.unpack());
 
-    //    let actual = d32::parse_rounding("9e-102", Rounding::Up).unwrap();
-    //    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
-
-    //    let actual = d32::parse_rounding("9e-102", Rounding::Zero).unwrap();
-    //    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
-    //
-    //    let actual = d32::parse_rounding("9e-102", Rounding::TiesAway).unwrap();
-    //    eprintln!("{:x} => {:?}", actual.to_bits(), actual.unpack());
+    // let y: d128 = "+5695567.598669978987e6134".parse().unwrap();
+    // // should be: 12298
+    // eprintln!("{:?}", y.unpack());
 }

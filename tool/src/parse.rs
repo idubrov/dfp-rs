@@ -14,6 +14,17 @@ fn interpret_special(s: &str) -> String {
         .replace("infinity", "inf")
 }
 
+
+fn rounding_context(rounding: Rounding) -> &'static str {
+    match rounding {
+        Rounding::Nearest => "NearestRoundingContext",
+        Rounding::Down => "DownRoundingContext",
+        Rounding::Up => "UpRoundingContext",
+        Rounding::Zero => "ZeroRoundingContext",
+        Rounding::TiesAway => "TiesAwayRoundingContext",
+    }
+}
+
 impl<'a> Parser<'a> {
     fn new(input: &'a str) -> Self {
         Parser { input }
@@ -49,7 +60,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_value(&mut self, format: DecimalType) -> DecimalArg {
+    fn parse_value(&mut self, format: DecimalType, rounding: Rounding) -> DecimalArg {
         let value = self.parse_str();
         let representation = if value.starts_with('[') && value.ends_with(']') {
             let value = &value[1..value.len() - 1].replace(',', "");
@@ -60,6 +71,7 @@ impl<'a> Parser<'a> {
 
         DecimalArg {
             dec_type: format,
+            rounding,
             representation,
         }
     }
@@ -104,9 +116,9 @@ pub enum DecimalType {
 impl fmt::Display for DecimalType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DecimalType::Decimal32 => f.write_str("d32"),
-            DecimalType::Decimal64 => f.write_str("d64"),
-            DecimalType::Decimal128 => f.write_str("d128"),
+            DecimalType::Decimal32 => f.write_str("u32"),
+            DecimalType::Decimal64 => f.write_str("u64"),
+            DecimalType::Decimal128 => f.write_str("u128"),
         }
     }
 }
@@ -114,15 +126,22 @@ impl fmt::Display for DecimalType {
 #[derive(Debug, PartialEq)]
 pub struct DecimalArg {
     pub dec_type: DecimalType,
+    pub rounding: Rounding,
     pub representation: Representation,
 }
 
 impl fmt::Display for DecimalArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ctx = rounding_context(self.rounding);
         match self.representation {
-            Representation::Bits(ref bits) => write!(f, "{}::from_bits(0x{})", self.dec_type, bits),
+            Representation::Bits(ref bits) => write!(f, "Decimal::<{}, {}>::from_bits(0x{})", self.dec_type, ctx, bits),
             Representation::Str(ref s) => {
-                write!(f, "\"{}\".parse::<{}>().unwrap()", s, self.dec_type)
+                // Note: arguments are always parsed with `Nearest` rounding!
+                // Would be great if all tests were only using bits as an input, for robustness,
+                // but they do use string parsing a lot. And some of the test cases are actually
+                // exercising rounding immediately during the parsing. What is more, it seems like
+                // it doesn't use test case rounding, but seems to be always using `Nearest`.
+                write!(f, "Decimal::<{}, {}>::parse_rounding(\"{}\", Rounding::Nearest).unwrap()", self.dec_type, ctx, s)
             }
         }
     }
@@ -136,6 +155,7 @@ pub enum Representation {
 
 #[derive(Debug, PartialEq)]
 pub struct BoolOp {
+    pub rounding: Rounding,
     pub op: &'static str,
     pub arg0: DecimalArg,
     pub result: bool,
@@ -150,10 +170,11 @@ impl fmt::Display for BoolOp {
 
 impl BoolOp {
     fn parse(parser: &mut Parser, format: DecimalType, op: &'static str) -> TestCaseKind {
-        let _rounding = parser.parse_rounding();
+        let rounding = parser.parse_rounding();
         TestCaseKind::Bool(BoolOp {
             op,
-            arg0: parser.parse_value(format),
+            rounding,
+            arg0: parser.parse_value(format, rounding),
             result: parser.parse_bool(),
         })
     }
@@ -178,38 +199,68 @@ impl fmt::Display for UnaryOp {
 
 impl UnaryOp {
     fn parse(parser: &mut Parser, format: DecimalType, op: &'static str) -> TestCaseKind {
-        let _rounding = parser.parse_rounding();
+        let rounding = parser.parse_rounding();
         TestCaseKind::Unary(UnaryOp {
             op,
-            arg0: parser.parse_value(format),
-            result: parser.parse_value(format),
+            arg0: parser.parse_value(format, rounding),
+            result: parser.parse_value(format, rounding),
+        })
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct BinaryOp {
+    pub op: &'static str,
+    pub arg0: DecimalArg,
+    pub arg1: DecimalArg,
+    pub result: DecimalArg,
+}
+
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "assert_eq!(Bits({}.{}({}).to_bits()), Bits({}.to_bits()));",
+            self.arg0, self.op, self.arg1, self.result
+        )
+    }
+}
+
+impl BinaryOp {
+    fn parse(parser: &mut Parser, format: DecimalType, op: &'static str) -> TestCaseKind {
+        let rounding = parser.parse_rounding();
+        TestCaseKind::Binary(BinaryOp {
+            op,
+            arg0: parser.parse_value(format, rounding),
+            arg1: parser.parse_value(format, rounding),
+            result: parser.parse_value(format, rounding),
         })
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ParseOp {
-    pub rounding: Rounding,
     pub arg0: String,
     pub result: DecimalArg,
 }
 
 impl fmt::Display for ParseOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ctx = rounding_context(self.result.rounding);
         write!(
             f,
-            "assert_eq!(Bits({}::parse_rounding(\"{}\", Rounding::{:?}).unwrap_or({}::NAN).to_bits()), Bits({}.to_bits()));",
-            self.result.dec_type, self.arg0, self.rounding, self.result.dec_type, self.result
+            "assert_eq!(Bits(\"{}\".parse::<Decimal::<{}, {}>>().unwrap_or(Decimal::<{}, {}>::NAN).to_bits()), Bits({}.to_bits()));",
+            self.arg0, self.result.dec_type, ctx, self.result.dec_type, ctx, self.result
         )
     }
 }
 
 impl ParseOp {
     fn parse(parser: &mut Parser, format: DecimalType) -> TestCaseKind {
+        let rounding = parser.parse_rounding();
         TestCaseKind::Parse(ParseOp {
-            rounding: parser.parse_rounding(),
             arg0: interpret_special(parser.parse_str()),
-            result: parser.parse_value(format),
+            result: parser.parse_value(format, rounding),
         })
     }
 }
@@ -246,8 +297,8 @@ impl fmt::Display for ClassifyOp {
 
 impl ClassifyOp {
     fn parse(parser: &mut Parser, format: DecimalType) -> TestCaseKind {
-        let _rounding = parser.parse_rounding();
-        let value = parser.parse_value(format);
+        let rounding = parser.parse_rounding();
+        let value = parser.parse_value(format, rounding);
         let (category, is_positive) = parser.parse_category_sign();
         TestCaseKind::Classify(ClassifyOp {
             value,
@@ -261,6 +312,7 @@ impl ClassifyOp {
 pub enum TestCaseKind {
     Bool(BoolOp),
     Unary(UnaryOp),
+    Binary(BinaryOp),
     Parse(ParseOp),
     Classify(ClassifyOp),
     Unsupported,
@@ -315,6 +367,11 @@ impl FromStr for TestCase {
             "bid64_from_string" => ParseOp::parse(parser, DecimalType::Decimal64),
             "bid128_from_string" => ParseOp::parse(parser, DecimalType::Decimal128),
 
+
+            "bid32_add" => BinaryOp::parse(parser, DecimalType::Decimal32, "add"),
+            "bid64_add" => BinaryOp::parse(parser, DecimalType::Decimal64, "add"),
+            "bid128_add" => BinaryOp::parse(parser, DecimalType::Decimal128, "add"),
+
             _ => {
                 // Here is the place to add support for other test cases
                 return Ok(TestCase {
@@ -335,6 +392,7 @@ impl fmt::Display for TestCase {
         match &self.kind {
             TestCaseKind::Bool(op) => op.fmt(f),
             TestCaseKind::Unary(op) => op.fmt(f),
+            TestCaseKind::Binary(op) => op.fmt(f),
             TestCaseKind::Parse(op) => op.fmt(f),
             TestCaseKind::Classify(op) => op.fmt(f),
             TestCaseKind::Unsupported => panic!("unsupported operation"),
