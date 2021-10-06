@@ -11,6 +11,7 @@ mod consts;
 mod d128_impl;
 mod d32_impl;
 mod d64_impl;
+mod shared;
 #[cfg(test)]
 mod tests;
 

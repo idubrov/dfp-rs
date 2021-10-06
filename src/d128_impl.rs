@@ -48,82 +48,36 @@ impl<Ctx: crate::Context> fmt::Debug for Decimal<u128, Ctx> {
 }
 
 impl Unpacked<u128> {
-    pub(crate) fn pack_with_rounding<Ctx: crate::Context>(mut self) -> Decimal<u128, Ctx> {
-        // FIXME: incorrect rounding...
-        if self.coefficient >= u128::MAXIMUM_COEFFICIENT * 100 {
-            let digit = self.coefficient % 1000;
-            self.coefficient /= 1000;
+    pub(crate) fn round_and_pack<Ctx: crate::Context>(mut self) -> Decimal<u128, Ctx> {
+        let digits = n_digits(self.coefficient);
+
+        // We could have up to 3 extra digits here. 2 digits could come in cases we scale one
+        // operand by `100` plus 1 extra digit for overflow (`999_999_900` plus `123`, for example).
+        if digits > u128::COEFFICIENT_SIZE {
+            let extra = digits - u128::COEFFICIENT_SIZE;
+            let factor = u128::FACTORS[usize::from(extra)];
+            let remainder = self.coefficient % factor;
+            self.coefficient /= factor;
             let round_up = match Ctx::rounding() {
-                Rounding::Nearest if digit == 500 => is_odd(self.coefficient),
-                Rounding::Nearest => digit > 500,
-                Rounding::Down => digit != 0 && self.sign,
-                Rounding::Up => digit != 0 && !self.sign,
+                Rounding::Nearest if remainder == factor / 2 => is_odd(self.coefficient),
+                Rounding::Nearest => remainder > factor / 2,
+                Rounding::Down => remainder != 0 && self.sign,
+                Rounding::Up => remainder != 0 && !self.sign,
                 Rounding::Zero => false,
-                Rounding::TiesAway => digit >= 500,
+                Rounding::TiesAway => remainder >= factor / 2,
             };
             if round_up {
                 self.coefficient += 1;
+                // Overflow, need to remove one more digit. Since we added `1`, it can only be the
+                // upper bound itself. Divide it by 10.
+                if self.coefficient == u128::MAXIMUM_COEFFICIENT {
+                    self.coefficient /= 10;
+                    self.exponent += 1;
+                }
             }
-            self.exponent += 3;
-            if self.coefficient == u128::MAXIMUM_COEFFICIENT {
-                // Essentially, divide coefficient by 10 -- it's too big now!
-                self.coefficient = u128::FACTORS[usize::from(u128::COEFFICIENT_SIZE) - 1];
-                self.exponent += 1;
-            }
-        } else if self.coefficient >= u128::MAXIMUM_COEFFICIENT * 10 {
-            let digit = self.coefficient % 100;
-            self.coefficient /= 100;
-            let round_up = match Ctx::rounding() {
-                Rounding::Nearest if digit == 50 => is_odd(self.coefficient),
-                Rounding::Nearest => digit > 50,
-                Rounding::Down => digit != 0 && self.sign,
-                Rounding::Up => digit != 0 && !self.sign,
-                Rounding::Zero => false,
-                Rounding::TiesAway => digit >= 50,
-            };
-            if round_up {
-                self.coefficient += 1;
-            }
-            self.exponent += 2;
-            if self.coefficient == u128::MAXIMUM_COEFFICIENT {
-                // Essentially, divide coefficient by 10 -- it's too big now!
-                self.coefficient = u128::FACTORS[usize::from(u128::COEFFICIENT_SIZE) - 1];
-                self.exponent += 1;
-            }
-        } else if self.coefficient >= u128::MAXIMUM_COEFFICIENT {
-            let digit = self.coefficient % 10;
-            self.coefficient /= 10;
-            let round_up = match Ctx::rounding() {
-                Rounding::Nearest if digit == 5 => is_odd(self.coefficient),
-                Rounding::Nearest => digit > 5,
-                Rounding::Down => digit != 0 && self.sign,
-                Rounding::Up => digit != 0 && !self.sign,
-                Rounding::Zero => false,
-                Rounding::TiesAway => digit >= 5,
-            };
-            if round_up {
-                self.coefficient += 1;
-            }
-            self.exponent += 1;
-            if self.coefficient == u128::MAXIMUM_COEFFICIENT {
-                // Essentially, divide coefficient by 10 -- it's too big now!
-                self.coefficient = u128::FACTORS[usize::from(u128::COEFFICIENT_SIZE) - 1];
-                self.exponent += 1;
-            }
+            self.exponent += extra;
         }
-        // Round to infinity, value is too large
-        if self.exponent as isize > EXPONENT_MAX {
-            let rounding = Ctx::rounding();
-            if rounding == Rounding::Zero
-                || (rounding == Rounding::Down && !self.sign)
-                || (rounding == Rounding::Up && self.sign)
-            {
-                self.coefficient = u128::MAXIMUM_COEFFICIENT - 1;
-                self.exponent = EXPONENT_MAX as u16;
-            } else {
-                return infinity(self.sign);
-            }
-        }
+
         // Round to infinity, value is too large
         if self.exponent as isize > EXPONENT_MAX {
             let rounding = Ctx::rounding();
@@ -146,11 +100,15 @@ impl Unpacked<u128> {
     fn pack<Ctx: crate::Context>(self: Self) -> Decimal<u128, Ctx> {
         debug_assert!(
             self.coefficient < u128::MAXIMUM_COEFFICIENT,
-            "coefficient is too large"
+            "coefficient '{}' is too large for {}-bit decimal",
+            self.coefficient,
+            u128::BITS,
         );
         debug_assert!(
             self.exponent < (0b11 << u128::EXPONENT_BITS),
-            "exponent is too large"
+            "exponent '{}' is too large for {}-bit decimal",
+            self.coefficient,
+            u128::BITS,
         );
 
         let mut value: u128 = if self.sign { SIGN_MASK } else { 0 };
@@ -567,6 +525,10 @@ fn n_digits(coefficient: u128) -> u16 {
     };
 }
 
+/// Increase precision of the value up to the given exponent. Keeps value in the range of allowed
+/// coefficient limits. For example, if we have 32-bit decimal `999_999` and exponent difference
+/// is `5`, we could only scale number by one digit (since it is already using 6 out of 7 allowed
+/// decimal digits).
 fn increase_precision(value: &mut Unpacked<u128>, exponent: u16) {
     // How many extra decimal digits can we use for scaling
     let max_extra = u128::COEFFICIENT_SIZE - n_digits(value.coefficient);
@@ -612,17 +574,7 @@ impl<Ctx: crate::Context> Add for Decimal<u128, Ctx> {
         // Handle zeroes
         if lhs_unpacked.coefficient == 0 && rhs_unpacked.coefficient == 0 {
             // Pick the zero with smallest exponent
-            let sign = if lhs_unpacked.sign != rhs_unpacked.sign {
-                Ctx::rounding() == Rounding::Down
-            } else {
-                lhs_unpacked.sign
-            };
-            let result = Unpacked {
-                coefficient: 0,
-                exponent: lhs_unpacked.exponent.min(rhs_unpacked.exponent),
-                sign,
-            };
-            return result.pack();
+            return crate::shared::min_zero(lhs_unpacked, rhs_unpacked, Ctx::rounding()).pack();
         } else if lhs_unpacked.coefficient == 0 {
             if lhs_unpacked.exponent >= rhs_unpacked.exponent {
                 return rhs;
@@ -653,11 +605,11 @@ impl<Ctx: crate::Context> Add for Decimal<u128, Ctx> {
         let mut diff_exp = a.exponent - b.exponent;
 
         // We can accommodate up to 2 more digits in our coefficient storage without overflow
-        // (temporarily, we won't be able to represent it as a decimal in the end).
-        // Increase precision of `a` by up to two digits, to trigger rounding in the end.
+        // (temporarily, we won't be able to represent it as a decimal in the end, but we will do
+        // rounding). Increase precision of `a` by up to two digits, to trigger rounding in the end.
         // Two digits are necessary so we don't get case where we take `1_000_000`, add one more digit
         // to get `10_000_000`, then subtract "epsilon" (very small) `b` and get `9_999_999` which
-        // would skip rounding (as it fits as-is).
+        // would skip rounding (as it fits as-is into 7 allowed decimal digits).
         match diff_exp {
             0 => {}
             1 => {
@@ -672,27 +624,25 @@ impl<Ctx: crate::Context> Add for Decimal<u128, Ctx> {
             }
         }
 
-        // Scale down `b`
+        // Scale down `b`. Check for necessity of removing a tie break. We know that last two digits
+        // of `a` are zeros (because we would only need to scale `b` if scale difference is too big,
+        // in which case we add two more digits to `a`). If last digit of `b` is `0` or `5`, this
+        // will create a "tie" during certain rounding modes (`Nearest`, `TiesAway`) which would
+        // depend on digits in `b` we rounded off here. Check that condition and remove tie by
+        // adding a small "epsilon" of `1` to `b`.
         if diff_exp > u128::COEFFICIENT_SIZE {
-            // Too big of a difference, even after scaling `a` difference in exponent is more
-            // than we have coefficient digits (so, `b` is essentially zero compared to `a`).
-            b.coefficient = 0;
-            b.exponent += diff_exp;
+            // We know `b` wasn't zero, so this is a "tie" scenario -- use small "epsilon" of `1`.
+            b.coefficient = 1;
         } else if diff_exp != 0 {
-            let tie = b.coefficient % u128::FACTORS[usize::from(diff_exp)];
-            b.coefficient /= u128::FACTORS[usize::from(diff_exp)];
+            let factor = u128::FACTORS[usize::from(diff_exp)];
+            let tie = b.coefficient % factor;
+            b.coefficient /= factor;
             if b.coefficient % 5 == 0 && tie > 0 {
-                // round up, to remove tie break
+                // break the tie
                 b.coefficient += 1;
             }
-            b.exponent += diff_exp;
         }
-        // We know `b` wasn't zero, so in case it is smaller than the scaling factor, keep some
-        // "small" value epsilon of 1. Since we scaled `a` by at least two digits more, this will
-        // be rounded.
-        if b.coefficient == 0 {
-            b.coefficient = 1;
-        }
+        b.exponent += diff_exp;
 
         debug_assert_eq!(
             a.exponent, b.exponent,
@@ -701,16 +651,16 @@ impl<Ctx: crate::Context> Add for Decimal<u128, Ctx> {
 
         let different_sign = lhs.is_sign_positive() != rhs.is_sign_positive();
         if different_sign {
-            b.coefficient = 0u128.wrapping_sub(b.coefficient);
+            a.coefficient = a.coefficient.wrapping_sub(b.coefficient);
+        } else {
+            a.coefficient = a.coefficient.wrapping_add(b.coefficient);
         }
-
-        a.coefficient = a.coefficient.wrapping_add(b.coefficient);
         if a.coefficient & (1 << (u128::BITS - 1)) != 0 {
             a.sign = !a.sign;
             a.coefficient = 0u128.wrapping_sub(a.coefficient);
         } else if a.coefficient == 0 {
             a.sign = Ctx::rounding() == Rounding::Down;
         }
-        a.pack_with_rounding()
+        a.round_and_pack()
     }
 }
