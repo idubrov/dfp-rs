@@ -185,7 +185,7 @@ where
     }
 }
 
-impl<Ctx: crate::Context> Copy for Decimal<u32, Ctx> {}
+impl<T: Copy, Ctx: crate::Context> Copy for Decimal<T, Ctx> {}
 
 impl<T, Ctx: crate::Context> std::fmt::Debug for Decimal<T, Ctx>
 where
@@ -352,6 +352,12 @@ impl<T: DecimalStorage, Ctx: crate::Context> Add for Decimal<T, Ctx> {
     }
 }
 
+impl <T: DecimalStorage, Ctx: crate::Context> std::ops::AddAssign for Decimal<T, Ctx> {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
 impl<T: DecimalStorage, Ctx: crate::Context> Sub for Decimal<T, Ctx> {
     type Output = Self;
 
@@ -363,10 +369,22 @@ impl<T: DecimalStorage, Ctx: crate::Context> Sub for Decimal<T, Ctx> {
     }
 }
 
+impl <T: DecimalStorage, Ctx: crate::Context> std::ops::SubAssign for Decimal<T, Ctx> {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
 impl<T: DecimalStorage, Ctx: crate::Context> Mul for Decimal<T, Ctx> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         Self::from_bits(raw::mul(self.0, rhs.0, Ctx::rounding()))
+    }
+}
+
+impl <T: DecimalStorage, Ctx: crate::Context> std::ops::MulAssign for Decimal<T, Ctx> {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
     }
 }
