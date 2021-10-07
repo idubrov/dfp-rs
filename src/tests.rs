@@ -1,12 +1,14 @@
 #![allow(warnings)]
 use super::FpCategory;
-use crate::consts::DecimalProps;
+use crate::consts::DecimalConsts;
 use crate::*;
 
 type d32_down = Decimal<u32, DownRoundingContext>;
 
 #[test]
 fn it_works() {
+    let x: d128 = d128::from_bits(0x1f800000);
+    eprintln!("{:?}", x);
     //assert_eq!(Bits(d32::<NearestRoundingContext>::from_bits(0x1f800000).add(d32::<NearestRoundingContext>::from_bits(0x9b800000)).to_bits()), Bits(d32::<NearestRoundingContext>::from_bits(0x1b800000).to_bits()));
     // let x: d32 = d32::from_bits(0x1f800000);
     // let y: d32 = d32::from_bits(0x9b800000);
