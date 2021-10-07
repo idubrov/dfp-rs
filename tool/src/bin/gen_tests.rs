@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     writeln!(out, "pub mod util;")?;
     writeln!(out, "use dfp::{{FpCategory, Decimal, Rounding, NearestRoundingContext, DownRoundingContext, UpRoundingContext, ZeroRoundingContext, TiesAwayRoundingContext}};")?;
     writeln!(out, "use self::util::Bits;")?;
-    writeln!(out, "use std::ops::Add;")?;
+    writeln!(out, "use std::ops::{{Add, Sub}};")?;
 
     for (key, cases) in cases {
         writeln!(out)?;

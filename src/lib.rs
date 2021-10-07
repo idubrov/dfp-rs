@@ -20,7 +20,7 @@ use crate::consts::DecimalStorage;
 use std::fmt::LowerHex;
 use std::marker::PhantomData;
 pub use std::num::FpCategory;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -349,6 +349,17 @@ impl<T: DecimalStorage, Ctx: crate::Context> Add for Decimal<T, Ctx> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
+        Self::from_bits(raw::add(self.0, rhs.0, Ctx::rounding()))
+    }
+}
+
+impl<T: DecimalStorage, Ctx: crate::Context> Sub for Decimal<T, Ctx> {
+    type Output = Self;
+
+    fn sub(self, mut rhs: Self) -> Self::Output {
+        if !rhs.is_nan() {
+            rhs.0 ^= T::SIGN_MASK;
+        }
         Self::from_bits(raw::add(self.0, rhs.0, Ctx::rounding()))
     }
 }

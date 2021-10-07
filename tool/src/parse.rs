@@ -378,6 +378,10 @@ impl FromStr for TestCase {
             "bid64_add" => BinaryOp::parse(parser, DecimalType::Decimal64, "add"),
             "bid128_add" => BinaryOp::parse(parser, DecimalType::Decimal128, "add"),
 
+            "bid32_sub" => BinaryOp::parse(parser, DecimalType::Decimal32, "sub"),
+            "bid64_sub" => BinaryOp::parse(parser, DecimalType::Decimal64, "sub"),
+            "bid128_sub" => BinaryOp::parse(parser, DecimalType::Decimal128, "sub"),
+
             _ => {
                 // Here is the place to add support for other test cases
                 return Ok(TestCase {

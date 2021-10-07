@@ -386,6 +386,7 @@ pub fn parse_rounding<T: DecimalStorage>(
     Ok(unpacked.pack())
 }
 
+/// Add two decimal numbers with rounding.
 pub fn add<T: DecimalStorage>(lhs: T, rhs: T, rounding: Rounding) -> T {
     let lhs_is_nan = (lhs & T::NAN_MASK) == T::NAN_MASK;
     let rhs_is_nan = (rhs & T::NAN_MASK) == T::NAN_MASK;

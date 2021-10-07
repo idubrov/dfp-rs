@@ -7,8 +7,13 @@ type d32_down = Decimal<u32, DownRoundingContext>;
 
 #[test]
 fn it_works() {
-    let x: d128 = d128::from_bits(0x1f800000);
-    eprintln!("{:?}", x);
+    let x = Decimal::<u32, NearestRoundingContext>::parse_rounding("1.0", Rounding::Nearest).unwrap();
+    let y = Decimal::<u32, NearestRoundingContext>::from_bits(0x7c000000);
+    let z = Decimal::<u32, NearestRoundingContext>::from_bits(0x7c000000);
+    // eprintln!("{:?} x", x.unpack());
+    eprintln!("{:x?} y", y.to_bits());
+    eprintln!("{:x?} (x - y)", (x - y).to_bits());
+    eprintln!("{:x?} expected", z.to_bits());
     //assert_eq!(Bits(d32::<NearestRoundingContext>::from_bits(0x1f800000).add(d32::<NearestRoundingContext>::from_bits(0x9b800000)).to_bits()), Bits(d32::<NearestRoundingContext>::from_bits(0x1b800000).to_bits()));
     // let x: d32 = d32::from_bits(0x1f800000);
     // let y: d32 = d32::from_bits(0x9b800000);

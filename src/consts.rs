@@ -1,5 +1,5 @@
 use num_traits::{FromPrimitive, NumAssignOps, PrimInt, ToPrimitive, WrappingAdd, WrappingSub};
-use std::ops::{BitAndAssign, BitOrAssign};
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
 pub trait DecimalConsts: Copy + 'static {
     // Total size (bits)
@@ -172,6 +172,7 @@ pub trait DecimalStorage:
     + NumAssignOps
     + BitOrAssign
     + BitAndAssign
+    + BitXorAssign
     + WrappingAdd
     + WrappingSub
     + std::fmt::Display
