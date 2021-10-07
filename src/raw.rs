@@ -111,8 +111,32 @@ impl<T: DecimalStorage> Unpacked<T> {
         value
     }
 
+    /// `pack`, but round to infinity / maximum representable value in case exponent is too large
+    fn pack_round_infinity(self, rounding: Rounding) -> T {
+        if self.exponent <= T::EXPONENT_MAX {
+            return self.pack();
+        }
+        // Round to infinity, exponent is too large
+        // Note that we only add to exponent when our value doesn't fit into coefficient (otherwise
+        // we could have pushed some of the exponent into the coefficient).
+        if rounding == Rounding::Zero
+            || (rounding == Rounding::Down && !self.sign)
+            || (rounding == Rounding::Up && self.sign)
+        {
+            // Round to maximum representable value
+            let rounded = Unpacked {
+                coefficient: T::MAXIMUM_COEFFICIENT - T::one(),
+                exponent: T::EXPONENT_MAX as u16,
+                sign: self.sign,
+            };
+            rounded.pack()
+        } else {
+            infinity(self.sign)
+        }
+    }
+
     pub fn is_normal_internal(self) -> bool {
-        if self.exponent >= (T::COEFFICIENT_SIZE - 1) as u16 {
+        if self.exponent >= (T::MAXIMUM_DIGITS - 1) as u16 {
             true // Normal
         } else {
             // Check if coefficient is high enough for an exponent
@@ -124,74 +148,67 @@ impl<T: DecimalStorage> Unpacked<T> {
         }
     }
 
-    /// Fit coefficient by rounding
-    pub fn fit_coefficient(&mut self, rounding: Rounding) {
-        let digits = n_digits(self.coefficient);
-
-        // We could have up to 3 extra digits here. 2 digits could come in cases we scale one
-        // operand by `100` plus 1 extra digit for overflow (`999_999_900` plus `123`, for example).
-        if digits > T::COEFFICIENT_SIZE {
-            let extra = digits - T::COEFFICIENT_SIZE;
-            self.apply_rounding(extra, rounding);
-        }
-    }
-
     /// Increase precision of the value up to the given exponent. Keeps value in the range of allowed
     /// coefficient limits. For example, if we have 32-bit decimal `999_999` and exponent difference
     /// is `5`, we could only scale number by one digit (since it is already using 6 out of 7 allowed
     /// decimal digits).
     fn increase_precision(&mut self, exponent: u16) {
         // How many extra decimal digits can we use for scaling
-        let max_extra = T::COEFFICIENT_SIZE - n_digits(self.coefficient);
+        let max_extra = T::MAXIMUM_DIGITS - n_digits(self.coefficient);
         let factor: u16 = (self.exponent - exponent).min(max_extra);
         self.coefficient *= T::FACTORS[factor as usize];
         self.exponent -= factor;
     }
 }
 
+// These functions are also available for "wide" representations.
 impl<T: BasicInt> Unpacked<T> {
-    /// Round last `extra` digits from the number
-    fn apply_rounding(&mut self, digits_to_round: u16, rounding: Rounding) {
-        if digits_to_round == 0 {
-            // Nothing to do
+    /// Round digits off from the coefficient to make it fit. `min_round` is the minimum amount of
+    /// digits we need to round off in order to make exponent to fit (if exponent is too small).
+    /// If zero, no exponent fitting is necessary.
+    /// If number does not fit into the coefficient range, round it as well.
+    fn round_to_fit(&mut self, min_round: u16, max_digits: u16, rounding: Rounding) {
+        let digits = n_digits(self.coefficient);
+
+        // See if we need to round digits to make it fit into coefficient (`max_digits`).
+        let to_round = min_round.max(digits.saturating_sub(max_digits));
+        if to_round == 0 {
+            // Nothing to round
             return;
         }
-        let idx = usize::from(digits_to_round);
-        let (quotent, remainder, half_factor) = if idx >= T::FACTORS.len() {
-            // Just take some arbitrary large number
-            // FIXME: is this correct?
-            let half_factor = (*T::FACTORS.last().unwrap()) >> 1;
-            (T::zero(), self.coefficient, half_factor)
-        } else {
-            let factor = T::FACTORS[usize::from(digits_to_round)];
-            (
-                self.coefficient / factor,
-                self.coefficient % factor,
-                factor >> 1,
-            )
-        };
-        self.coefficient = quotent;
-        let round_up = match rounding {
-            Rounding::Nearest if remainder == half_factor => is_odd(self.coefficient),
-            Rounding::Nearest => remainder > half_factor,
-            Rounding::Down => remainder != T::zero() && self.sign,
-            Rounding::Up => remainder != T::zero() && !self.sign,
-            Rounding::Zero => false,
-            Rounding::TiesAway => remainder >= half_factor,
-        };
-        if round_up {
-            let digits = n_digits(self.coefficient);
-            self.coefficient = self.coefficient + T::one();
-            let digits2 = n_digits(self.coefficient);
-            // Overflow, need to remove one more digit. Since we added `1`, it can only be the
-            // upper bound itself. Divide it by 10.
-            // FIXME: don't need to do that if we were rounding for exponent...
-            if digits != digits2 {
-                self.coefficient = self.coefficient / T::TEN;
-                self.exponent += 1;
+        let factor_idx = usize::from(to_round);
+        if factor_idx < T::FACTORS.len() {
+            let factor = T::FACTORS[factor_idx];
+            let remainder = self.coefficient % factor;
+            let half_factor = factor >> 1;
+            self.coefficient = self.coefficient / factor;
+            let round_up = match rounding {
+                Rounding::Nearest if remainder == half_factor => is_odd(self.coefficient),
+                Rounding::Nearest => remainder > half_factor,
+                Rounding::Down => remainder != T::zero() && self.sign,
+                Rounding::Up => remainder != T::zero() && !self.sign,
+                Rounding::Zero => false,
+                Rounding::TiesAway => remainder >= half_factor,
+            };
+            if round_up {
+                self.coefficient = self.coefficient + T::one();
             }
+        } else if self.coefficient != T::zero()
+            && ((rounding == Rounding::Down && self.sign)
+            || (rounding == Rounding::Up && !self.sign)) {
+            // We have a very small non-zero value -- round to `1` if rounding in the same direction as sign.
+            self.coefficient = T::one();
+        } else {
+            // Very small zero value or different rounding mode
+            self.coefficient = T::zero();
+        };
+        self.exponent += to_round;
+
+        // If our coefficient grew bigger after overflow, round it again.
+        if n_digits(self.coefficient) == max_digits + 1 {
+            self.coefficient = self.coefficient / T::TEN;
+            self.exponent += 1;
         }
-        self.exponent += digits_to_round;
     }
 }
 
@@ -219,23 +236,6 @@ pub fn infinity<T: DecimalStorage>(sign: bool) -> T {
         T::NEG_INFINITY_MASK
     } else {
         T::INFINITY_MASK
-    }
-}
-
-pub fn rounded_infinity<T: DecimalStorage>(sign: bool, rounding: Rounding) -> T {
-    if rounding == Rounding::Zero
-        || (rounding == Rounding::Down && !sign)
-        || (rounding == Rounding::Up && sign)
-    {
-        // Round to maximum representable value
-        let rounded = Unpacked {
-            coefficient: T::MAXIMUM_COEFFICIENT - T::one(),
-            exponent: T::EXPONENT_MAX as u16,
-            sign,
-        };
-        rounded.pack()
-    } else {
-        infinity(sign)
     }
 }
 
@@ -341,9 +341,8 @@ pub fn parse_rounding<T: DecimalStorage>(
 
     // The result is zero, with `zeroes` leading zeroes
     if bytes.is_empty() {
-        let value = ((T::from_u16(exponent2 as u16).unwrap()) << (T::COEFFICIENT_BITS + 3))
-            | sign(unpacked.sign);
-        return Ok(value);
+        unpacked.exponent = exponent2.clamp(0, T::EXPONENT_MAX as isize) as u16;
+        return Ok(unpacked.pack());
     }
 
     let mut coeff_digits = 0;
@@ -361,10 +360,10 @@ pub fn parse_rounding<T: DecimalStorage>(
 
         coeff_digits += 1;
         let digit = bytes[0] - b'0';
-        if coeff_digits <= T::COEFFICIENT_SIZE {
+        if coeff_digits <= T::MAXIMUM_DIGITS {
             unpacked.coefficient *= T::TEN;
             unpacked.coefficient += T::from_u8(digit).unwrap();
-        } else if coeff_digits == T::COEFFICIENT_SIZE + 1 {
+        } else if coeff_digits == T::MAXIMUM_DIGITS + 1 {
             // We are at the first digit that will be rounded off
             let round_up = match rounding {
                 Rounding::Nearest if digit == 5 => {
@@ -385,7 +384,7 @@ pub fn parse_rounding<T: DecimalStorage>(
             }
             if unpacked.coefficient == T::MAXIMUM_COEFFICIENT {
                 // Essentially, divide coefficient by 10 -- it's too big now!
-                unpacked.coefficient = T::FACTORS[usize::from(T::COEFFICIENT_SIZE) - 1];
+                unpacked.coefficient = T::FACTORS[usize::from(T::MAXIMUM_DIGITS) - 1];
                 exponent2 += 1;
             }
             exponent2 += 1;
@@ -423,16 +422,12 @@ pub fn parse_rounding<T: DecimalStorage>(
     if exponent2 < 0 {
         // FIXME: might trim exponent here... should compare before going from isize to u16
         let scale = (-exponent2) as u16;
-        if scale < T::COEFFICIENT_SIZE {
-            unpacked.apply_rounding(scale, rounding);
-        } else {
-            unpacked.coefficient = T::zero();
-        }
+        unpacked.round_to_fit(scale, T::MAXIMUM_DIGITS, rounding);
         unpacked.exponent = 0;
     } else if exponent2 > T::EXPONENT_MAX as isize {
         // FIXME: need test case for proper rounding in this case!
         let delta = (exponent2 as usize) - usize::from(T::EXPONENT_MAX);
-        let can_accomodate_digits = T::COEFFICIENT_SIZE - n_digits(unpacked.coefficient);
+        let can_accomodate_digits = T::MAXIMUM_DIGITS - n_digits(unpacked.coefficient);
         if unpacked.coefficient == T::zero() {
             unpacked.exponent = T::EXPONENT_MAX;
         } else if delta > usize::from(can_accomodate_digits) {
@@ -532,7 +527,7 @@ pub fn add<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T {
     // will create a "tie" during certain rounding modes (`Nearest`, `TiesAway`) which would
     // depend on digits in `b` we rounded off here. Check that condition and remove tie by
     // adding a small "epsilon" of `1` to `b`.
-    if diff_exp > T::COEFFICIENT_SIZE {
+    if diff_exp > T::MAXIMUM_DIGITS {
         // We know `b` wasn't zero, so this is a "tie" scenario -- use small "epsilon" of `1`.
         b.coefficient = T::one();
     } else if diff_exp != 0 {
@@ -563,16 +558,8 @@ pub fn add<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T {
     } else if a.coefficient == T::zero() {
         a.sign = rounding == Rounding::Down;
     }
-    a.fit_coefficient(rounding);
-
-    if a.exponent > T::EXPONENT_MAX {
-        // Round to infinity, exponent is too large
-        // Note that we only add to exponent when our value doesn't fit into coefficient (otherwise
-        // we could have pushed some of the exponent into the coefficient).
-        rounded_infinity(a.sign, rounding)
-    } else {
-        a.pack()
-    }
+    a.round_to_fit(0, T::MAXIMUM_DIGITS, rounding);
+    a.pack_round_infinity(rounding)
 }
 
 pub fn mul<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T where {
@@ -590,6 +577,7 @@ pub fn mul<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T w
         let lhs_is_zero = !lhs_is_infinite && Unpacked::new(lhs_raw).coefficient == T::zero();
         let rhs_is_zero = !rhs_is_infinite && Unpacked::new(rhs_raw).coefficient == T::zero();
         if lhs_is_zero || rhs_is_zero {
+            // Infinity multiplied by 0 is NaN
             return T::NAN_MASK;
         } else {
             return infinity(lhs_sign != rhs_sign);
@@ -599,6 +587,7 @@ pub fn mul<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T w
     let lhs = Unpacked::new(lhs_raw);
     let rhs = Unpacked::new(rhs_raw);
 
+    // One of sides is zero, return zero with correct exponent
     if lhs.coefficient == T::zero() || rhs.coefficient == T::zero() {
         let exp = (lhs.exponent + rhs.exponent).max(T::BIAS);
         let result = Unpacked {
@@ -616,28 +605,10 @@ pub fn mul<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T w
         sign: lhs.sign != rhs.sign,
     };
 
-    let mut to_round = 0;
-
-    // Round enough digits that the result fits into exponent (if exponent is too small)
-    if wide.exponent < T::BIAS {
-        to_round = T::BIAS - wide.exponent;
-    }
-
-    // Round enough digits that the coefficient fits into our smaller size
-    let digits = n_digits(wide.coefficient);
-    if digits > T::COEFFICIENT_SIZE {
-        to_round = to_round.max(digits - T::COEFFICIENT_SIZE);
-    }
-    let rounding_for_exponent = wide.exponent < T::BIAS;
-    wide.apply_rounding(to_round, rounding);
+    // If exponent is less than T::BIAS, need to round some digits.
+    let min_round = T::BIAS - wide.exponent.min(T::BIAS);
+    wide.round_to_fit(min_round, T::MAXIMUM_DIGITS, rounding);
     wide.exponent -= T::BIAS;
-
-    // We rounded because exponent was too small. However, after rounding we gained one extra digit.
-    // Put this digit back into the exponent.
-    if rounding_for_exponent && wide.exponent == 1 {
-        wide.coefficient = wide.coefficient * T::Wide::TEN;
-        wide.exponent -= 1;
-    }
 
     let (hi, lo) = T::split(wide.coefficient);
     debug_assert_eq!(hi, T::zero());
@@ -646,12 +617,5 @@ pub fn mul<T: DecimalStorage>(lhs_raw: T, rhs_raw: T, rounding: Rounding) -> T w
         exponent: wide.exponent,
         sign: wide.sign,
     };
-    if result.exponent > T::EXPONENT_MAX {
-        // Round to infinity, exponent is too large
-        // Note that we only add to exponent when our value doesn't fit into coefficient (otherwise
-        // we could have pushed some of the exponent into the coefficient).
-        rounded_infinity(result.sign, rounding)
-    } else {
-        result.pack()
-    }
+    result.pack_round_infinity(rounding)
 }

@@ -8,6 +8,10 @@ pub trait DecimalFactors: Sized + 'static {
     const FACTORS: &'static [Self];
 }
 
+/// Operations we need for backing numbers and their "wide" variants. For example, for 128-bit
+/// decimal, this trait needs to be implemented both for backing `u128` number and also for the
+/// "wide" `u256` (used in cases we need to run operation against wider coefficients, like in case
+/// of multiplications / divisions).
 pub trait BasicInt:
     DecimalFactors
     + PartialOrd
@@ -34,8 +38,8 @@ pub trait DecimalConsts: Copy + 'static {
     const EXPONENT_BITS: usize;
     // Coefficient continuation field (bits)
     const COEFFICIENT_BITS: usize;
-    // Coefficient length in decimal digits
-    const COEFFICIENT_SIZE: u16;
+    // Maximum decimal digits in the coefficient
+    const MAXIMUM_DIGITS: u16;
     const MAXIMUM_COEFFICIENT: Self;
     const BIAS: u16;
 }
@@ -44,7 +48,7 @@ impl DecimalConsts for u32 {
     const BITS: u32 = 32;
     const EXPONENT_BITS: usize = 6;
     const COEFFICIENT_BITS: usize = 20;
-    const COEFFICIENT_SIZE: u16 = 7;
+    const MAXIMUM_DIGITS: u16 = 7;
     const MAXIMUM_COEFFICIENT: u32 = 10_000_000;
     const BIAS: u16 = 101;
 }
@@ -59,7 +63,7 @@ impl DecimalConsts for u64 {
     const BITS: u32 = 64;
     const EXPONENT_BITS: usize = 8;
     const COEFFICIENT_BITS: usize = 50;
-    const COEFFICIENT_SIZE: u16 = 16;
+    const MAXIMUM_DIGITS: u16 = 16;
     const MAXIMUM_COEFFICIENT: u64 = 10_000_000_000_000_000;
     const BIAS: u16 = 398;
 }
@@ -93,7 +97,7 @@ impl DecimalConsts for u128 {
     const BITS: u32 = 128;
     const EXPONENT_BITS: usize = 12;
     const COEFFICIENT_BITS: usize = 110;
-    const COEFFICIENT_SIZE: u16 = 34;
+    const MAXIMUM_DIGITS: u16 = 34;
     const MAXIMUM_COEFFICIENT: u128 = 10_000_000_000_000_000_000_000_000_000_000_000;
     const BIAS: u16 = 6176;
 }
