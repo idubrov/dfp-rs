@@ -85,7 +85,7 @@ impl<T: DecimalStorage> Unpacked<T> {
     /// Pack back into a decimal. This variant does not handle any rounding or any out-of-bounds
     /// values (will panic in debug mode). `pack_with_rounding` handles rounding to make sure
     /// value could be represented.
-    fn pack(self: Self) -> T {
+    fn pack(self) -> T {
         debug_assert!(
             self.coefficient < T::MAXIMUM_COEFFICIENT,
             "coefficient '{}' is too large for {}-bit decimal",
@@ -203,11 +203,11 @@ pub fn n_digits<T: BasicInt>(coefficient: T) -> u16 {
         return digits as u16;
     }
     let digits = (-digits) as u16;
-    return if coefficient < T::FACTORS[usize::from(digits)] {
+    if coefficient < T::FACTORS[usize::from(digits)] {
         digits
     } else {
         digits + 1
-    };
+    }
 }
 
 pub fn is_odd<T: BasicInt>(value: T) -> bool {
@@ -272,13 +272,13 @@ pub fn normalize_nan<T: DecimalStorage>(value: T) -> T {
     // 1_000_000 (for 32-bit decimal) even though we can fit up to 9_999_999. I think, the
     // reason is that we only use `COEFFICIENT_BITS` of payload bits rather than full
     // coefficient mask (`LONG_COEFF_MASK` or `SHORT_COEFF_MASK`).
-    return if coefficient < T::MAXIMUM_COEFFICIENT / T::TEN {
+    if coefficient < T::MAXIMUM_COEFFICIENT / T::TEN {
         // Keep the payload -- fits into the range
         value & (T::NAN_MASK | T::SIGN_MASK | payload_mask)
     } else {
         // Reset payload to `0`
         value & (T::NAN_MASK | T::SIGN_MASK)
-    };
+    }
 }
 
 pub fn parse_rounding<T: DecimalStorage>(
