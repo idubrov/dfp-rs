@@ -1,19 +1,38 @@
 #![allow(warnings)]
 use super::FpCategory;
-use crate::consts::DecimalConsts;
+use crate::traits::DecimalConsts;
 use crate::*;
 
 type d32_down = Decimal<u32, DownRoundingContext>;
 
+use std::fmt;
+
+#[derive(PartialEq)]
+pub struct Bits<T: fmt::LowerHex>(pub T);
+
+impl<T: fmt::LowerHex> fmt::Debug for Bits<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{:x}]", self.0)
+    }
+}
+
 #[test]
 fn it_works() {
-    let x = Decimal::<u32, NearestRoundingContext>::parse_rounding("1.0", Rounding::Nearest).unwrap();
-    let y = Decimal::<u32, NearestRoundingContext>::from_bits(0x7c000000);
-    let z = Decimal::<u32, NearestRoundingContext>::from_bits(0x7c000000);
-    // eprintln!("{:?} x", x.unpack());
-    eprintln!("{:x?} y", y.to_bits());
-    eprintln!("{:x?} (x - y)", (x - y).to_bits());
-    eprintln!("{:x?} expected", z.to_bits());
+    //assert_eq!(Bits(Decimal::<u32, NearestRoundingContext>::parse_rounding("1010101e-95", Rounding::Nearest).unwrap().mul(Decimal::<u32, NearestRoundingContext>::parse_rounding("99e-8", Rounding::Nearest).unwrap()).to_bits()), Bits(Decimal::<u32, NearestRoundingContext>::parse_rounding("1000000e-101", Rounding::Nearest).unwrap().to_bits()));
+    let x =
+        Decimal::<u32, NearestRoundingContext>::parse_rounding("1010101e-95", Rounding::Nearest)
+            .unwrap();
+    let y =
+        Decimal::<u32, NearestRoundingContext>::parse_rounding("99e-8", Rounding::Nearest).unwrap();
+    let z =
+        Decimal::<u32, NearestRoundingContext>::parse_rounding("1000000e-101", Rounding::Nearest)
+            .unwrap();
+    eprintln!("{:?} x", x.unpack());
+    eprintln!("{:?} y", y.unpack());
+    eprintln!("{:?} (x * y)", (x * y).unpack());
+    eprintln!("{:?} expected", z.unpack());
+    // 99999999 exponent: 99
+    //
     //assert_eq!(Bits(d32::<NearestRoundingContext>::from_bits(0x1f800000).add(d32::<NearestRoundingContext>::from_bits(0x9b800000)).to_bits()), Bits(d32::<NearestRoundingContext>::from_bits(0x1b800000).to_bits()));
     // let x: d32 = d32::from_bits(0x1f800000);
     // let y: d32 = d32::from_bits(0x9b800000);

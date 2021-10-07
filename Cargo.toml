@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 num-traits = "0.2.14"
+primitive-types = { version = "0.10.1", default-features = false, features = ["num-traits"] }
 
 [badges]
 circle-ci = { repository = "idubrov/dfp-rs" }

@@ -7,20 +7,19 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-mod consts;
 mod raw;
-// mod d128_impl;
-// mod d32_impl;
-// mod d64_impl;
-// mod impls;
 #[cfg(test)]
 mod tests;
+mod traits;
+mod u256_impl;
+mod wide_ops;
 
-use crate::consts::DecimalStorage;
+use crate::traits::DecimalStorage;
+use crate::u256_impl::u256;
 use std::fmt::LowerHex;
 use std::marker::PhantomData;
 pub use std::num::FpCategory;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Mul, Sub};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -361,5 +360,13 @@ impl<T: DecimalStorage, Ctx: crate::Context> Sub for Decimal<T, Ctx> {
             rhs.0 ^= T::SIGN_MASK;
         }
         Self::from_bits(raw::add(self.0, rhs.0, Ctx::rounding()))
+    }
+}
+
+impl<T: DecimalStorage, Ctx: crate::Context> Mul for Decimal<T, Ctx> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self::from_bits(raw::mul(self.0, rhs.0, Ctx::rounding()))
     }
 }
